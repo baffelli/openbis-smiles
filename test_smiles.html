@@ -1,0 +1,214 @@
+
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="x-ua-compatible" content="ie=edge" />
+    <title>SMILES OpenBIS</title>
+    <meta name="description" content="An example of WebAPP using OpenBIS API." />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    
+    <link
+    href="https://fonts.googleapis.com/css?family=Droid+Sans:400,700"
+    rel="stylesheet"
+    />
+    <style>
+        {
+            box-sizing: border-box;
+        }
+        /* Set additional styling options for the columns*/
+        .column {
+            float: left;
+            width: 60%;
+        }
+        .button {
+            display: inline-block;
+            width: calc(50% - 4px);
+            margin: 0 auto;
+        }
+        .row:after {
+            content: "";
+            display: table;
+            clear: both;
+        }
+        form  { display: table;      }
+        p     { display: table-row;  }
+        label { display: table-cell; }
+        input { display: table-cell; }
+    </style>
+</head>
+<!-- Form to represent OpenBIS Molecule Object  -->
+<body>
+    <form>
+        
+        <fieldset>
+            <legend>Molecule</legend>
+            <div id="smile-canvas" width="500" height="500"></div>
+            <p>
+                <button type="button" id='draw' value='Draw molecule'>Draw Molecule</button>
+                <button id='save' name='Save molecule' hidden="hidden" type="button">Save Molecule</button>
+            </p>
+        </fieldset>
+        <fieldset>
+            <!-- <button  id='cancel' name='Cancel' hidden="hidden" type="button">Cancel Drawing</button> -->
+            <p>
+                <label for='error'>Info:</label>
+                <span id="error"></span>
+            </p>
+            <p>
+                <label for='molecule-name'>Molecule Name</label>
+                <input id="molecule-name" placeholder="Enter IUPAC Name" name="Enter Molecule Name" />
+                <input type="button" id='generate-from-name' value='Generate Object from Name'>
+            </p>
+        </fieldset>
+        <fieldset>
+            <legend>General Info</legend>
+            <p>
+                <label for='molecule-id'>ID</label>
+                <select id="molecule-id" name="molecule-id"></select>
+                
+            </p>
+            <p>
+                <label for='molecule-number'>Number</label>
+                <input id='molecule-number', name='Number'>
+            </p>
+            
+        </fieldset>
+        <fieldset>
+            <legend>Structure</legend>
+            <p>
+                <label for='chemical-formula'>Chemical Formula</label>
+                <input id="chemical-formula" name="Formula" />
+            </p>
+            <p>
+                <label for='smiles-output'>SMILES</label>
+                <input name="SMILES" id="smiles-output" />
+            </p>
+            <p>
+                <label for='cas-number'>CAS Number</label>
+                <input name="CAS Number" id="cas-number" />
+            </p>
+            <p>
+                <label for='upload'>Upload CDXML</label>
+                <input type="file" id='upload' name='Upload cdxml'>
+            </p>
+        </fieldset>
+        <fieldset>
+            <legend>Properties</legend>
+            <p>
+                <label for='molecule-hazardous'>Hazardous</label>
+                <input type='checkbox' id='molecule-hazardous'>
+                <input name="specifz" placeholder="specify" id="molecule-hazardous-spec" />
+            </p>
+        </fieldset>
+        <fieldset>
+            <legend>Storage Conditions</legend>
+            <p> 
+                <label for='molecule-fridge'>Fridge</label>
+                <input type='checkbox', id='molecule-fridge'>
+                <label for='molecule-light'>Light</label>
+                <input type='checkbox', id='molecule-light'>
+            </p>
+        </fieldset>
+        <fieldset>  
+            <legend>Supplier Info</legend>
+            <p>
+                <label for='molecule-supplier'>Supplier</label>
+                <input name="Supplier" id="molecule-supplier" />
+            </p>
+            <p>
+                <label for='molecule-synthby'>Synthesized by</label>
+                <input name="Synthby" id="molecule-synthby" />
+            </p>
+        </fieldset>
+    </form>
+    
+    
+    
+    
+    
+    
+    
+
+    
+
+    <!-- Openbis API -->
+    <script type="text/javascript" src="https://openbis-empa-lab503.ethz.ch:443/openbis/resources/api/v3/config.js"></script>
+    <script type="text/javascript" src="https://openbis-empa-lab503.ethz.ch:443/openbis/resources/api/v3/require.js"></script>
+
+
+    <!-- JSME Editor -->
+    <script type="text/javascript" language="javascript" src="https://jsme-editor.github.io/dist/jsme/jsme.nocache.js"></script>
+
+    <!--Redux for state management-->
+    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/redux/3.5.2/redux.js" type="text/javascript"></script> -->
+    <!-- Own Functions -->
+    <script type="text/javascript" src='js/openbis-functions.js'></script>
+    <script type="text/javascript" src='js/lib.js'></script>
+    <script type="text/javascript" src='js/store.js'></script>
+    <!-- Main code -->
+    <script>
+        
+        
+        let input = document.getElementById("molecule-name");
+        let generate = document.getElementById('generate-from-name');
+        let go_smiles = document.getElementById('draw-smiles');
+        let smiles_output = document.getElementById("smiles-output");
+        let cas_output = document.getElementById("cas-number");
+        let formula_output = document.getElementById('chemical-formula');
+        let sid = document.getElementById('molecule-id');
+        let error = document.getElementById('error');
+        let draw = document.getElementById('draw');
+        let options = {};
+        //Toggle to switch between drawing and saving
+        let depict = true;
+        let save_button = document.getElementById('save');
+        let cancel_button = document.getElementById('cancel');
+        //ADD JME applet
+        
+        
+        function jsmeOnLoad() {
+            jsmeApplet = new JSApplet.JSME("smile-canvas", "500px", "500px", {
+                options: "depict,markAtomOnly"
+            });
+            
+            require(["openbis", "openbis-functions"
+            , "lib", "store", "https://unpkg.com/react@17/umd/react.production.min"],
+            function(openbis, functions, lib, store, React) {
+                // //Initalise the redux store
+                const state = store.store;
+                //debugger;
+
+                // get a reference to AS API
+                var v3 = new openbis("https://openbis-empa-lab503.ethz.ch:443/openbis/openbis/rmi-application-server-v3.json");
+                // login to obtain a session token (the token it is automatically stored in openbis object a nd will be used for all subsequent API calls)
+                v3.login('basi_admin', 'Aiqu9aiB').done(function(token){
+                    //Fill the selector with all molecules
+                    lib.populateSelector(v3, sid);
+                    // Add event for selection of object
+                    sid.addEventListener("change", selection => {
+                        lib.getStructureAndPoulateFields(v3, selection, jsmeApplet);
+                    });
+                    // Add event for the case that "generate from name is pressed"
+                    generate.addEventListener("click", action => {
+                        lib.generateFromName(v3, input, error);
+                        lib.populateSelector(v3, sid);
+                    });
+                    //Add event to the pressed draw button
+                    draw.addEventListener('click', action =>{
+                        //state.dispatch({type:'draw/draw'})
+                        depict = lib.changeDrawMode(draw, save_button, jsmeApplet, depict)
+                    })
+                    save_button.addEventListener("click", action =>{
+                       permid = await lib.saveMolecule(jsmeApplet.smiles(), v3);
+                       lib.populateSelector(v3, sid);
+                    })
+                    // //v3.logout();
+                }); 
+                
+            });    
+            
+        };  
+        
+    </script>
+</body>
+</html>
