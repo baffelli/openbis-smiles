@@ -2,17 +2,15 @@ define("lib", ["openbis-functions"],
 function(openbis){
 
     async function getStructure(name, type='iupac_name'){
-        let response = await fetch(`https://cactus.nci.nih.gov:443/chemical/structure/${name}/${type}`);
-        let error = document.getElementById("error");
+        let nm = encodeURIComponent(name)
+        let response = await fetch(`https://cactus.nci.nih.gov:443/chemical/structure/${nm}/${type}`);
         if (!response.ok){
-            if (response.status==500){
+            if (response.status==404){
                 let em = `The molecule ${name} does not exist`;
-                setError(error, em);
                 throw new Error(em);
             } else
             throw new Error(`Response status ${response.statusText}`)
         }
-        resetError(error);
         let data = await response.text();
         return data
     }
@@ -27,25 +25,40 @@ function(openbis){
     }
     
     function drawSmiles(smiles, jmse){
-        debugger;
         jmse.readMolFile(smiles);
     }
     
+    function randomID(iupac){
+        nm = Math.floor(Math.random()*10);
+        return `${iupac}${nm}`
+    }
     
-    
-    async function populateFields(object, name_output, smiles_output, formula_output, cas_output, jmse){
+    async function populateFields(object, name_output, smiles_output, formula_output, cas_output, jmseApplet){
         let mol = Object.values(object)[0]
         let name = mol.properties['MOLECULE.IUPAC'];
-        name_output.value = name;
-        let smiles = await getStructure(name, 'SMILES');
+        let identifiers = await getMoleculeIdentifier(name)
+        name_output.value = identifiers.IUPAC;
+        smiles_output.value = identifiers.SMILES;
+        formula_output.value = identifiers.FORMULA;
+        cas_output.value = identifiers.CAS;
+        drawSmiles(identifiers.JME, jmseApplet);
+    }
+
+    async function getMoleculeIdentifier(name){
+        let iupac_name = await getStructure(name, 'iupac_name');
+        let smiles = await getStructure(name, 'smiles');
         let formula = await getStructure(name, 'formula');
-        let cas = await getStructure(name, 'cas');
+        let cas = await getStructure(name, 'CAS');
         // Get mol file 
         let jme = await getStructure(name, 'file?format=mol');
-        smiles_output.value = smiles;
-        formula_output.value = formula;
-        cas_output.value = cas;
-        drawSmiles(jme, jmse);
+        return {
+            IUPAC: iupac_name,
+            SMILES: smiles,
+            FORMULA: formula,
+            CAS: cas,
+            JME: jme
+
+        }
     }
     
     async function getStructureAndPoulateFields(api, selection, jmse){
@@ -60,10 +73,11 @@ function(openbis){
     async function generateFromName(api, name, error){
         //Validate the name
         let validated_name = await getStructure(name.value, 'iupac_name');
+        let identifiers = getMoleculeIdentifier(validated_name);
         console.log("Validated");
         setError(error, `Official IUPAC Name: ${validated_name}`, 'green');
         //Create the molecule
-        openbis.createMolecule(api, {IUPAC:validated_name});
+        openbis.createMolecule(api, identifiers);
         //Get properties
         
     }
@@ -126,7 +140,9 @@ function(openbis){
         populateSelector: populateSelector,
         listMolecules: listMolecules,
         changeDrawMode: changeDrawMode,
-        saveMolecule: saveMolecule
+        saveMolecule: saveMolecule,
+        getMoleculeIdentifier: getMoleculeIdentifier,
+        randomID: randomID
     }
     
 

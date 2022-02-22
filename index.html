@@ -1,0 +1,345 @@
+
+<html>
+<head>
+    
+    <!--Openbabel-->
+    <script type="text/javascript" src="openbabel.js"></script>
+    <!-- Openbis API -->
+    <script type="text/javascript" src="https://openbis-empa-lab503.ethz.ch:443/openbis/resources/api/v3/config.js"></script>
+    <script type="text/javascript" src="https://openbis-empa-lab503.ethz.ch:443/openbis/resources/api/v3/require.js"></script>
+    
+    
+    <!-- JSME Editor -->
+    <script type="text/javascript" language="javascript" src="https://jsme-editor.github.io/dist/jsme/jsme.nocache.js"></script>
+    <!-- vue -->
+    <script type="text/javascript" language="javascript" src="https://unpkg.com/vue@3"></script>
+    
+    
+    
+    <!-- Own Functions -->
+    <script type="text/javascript" src='js/openbis-functions.js'></script>
+    <script type="text/javascript" src='js/lib.js'></script>
+    <script type="text/javascript" src='js/store.js'></script>
+    <!-- Style -->
+    
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="app">
+        <form>
+            <fieldset>
+                <legend>Molecule</legend>
+                <div id="smile-canvas" height='500px' width='50%' class="jsme-editor"></div>
+                <p>
+                    <input type="button" id='draw' value='Draw molecule' @click="changeDrawMode">
+                    <button id='save' name='Save molecule' hidden="hidden" type="button">Save Molecule</button>
+                </p>
+            </fieldset>
+            <fieldset>
+                <p>
+                    <label for='error'>Info:</label>
+                    <span id="error">{{state.infoMessage}}</span>
+                </p>
+                <p colspan=3>
+                    <label for='molecule-name'>Molecule Name</label>
+                    <input type='text' class="form-control" id="moleculeName" placeholder="Enter IUPAC Name" name="Enter Molecule Name" v-model='state.IUPAC'>
+                    <input type="button" id='generate-from-name' value='Generate' @click="onGenerateFromName">
+                </p>
+            </fieldset>
+            <fieldset>
+                <legend>General Info</legend>
+                <p>
+                    <label for='molecule-code'>Code</label>
+                    <select id="molecule-code" name="molecule-code" v-on:change='selectMolecule'>
+                        <option :value="null" value="null"></option>
+                        <option v-for="molecule in state.availableMolecules" :value="molecule.permId">{{molecule.code}}</option>
+                        <option ></option>
+                    </select>
+                    
+                </p>
+                <p>
+                    <label for='molecule-id'>ID</label>
+                    <input id='molecule-id' name='ID' v-model='state.ID'>
+                </p>
+                <p>
+                    <label for='molecule-number'>Number</label>
+                    <input type='number' id='molecule-number' name='Number' v-model='state.number'>
+                </p>
+                
+            </fieldset>
+            <fieldset>
+                <legend>Structure</legend>
+                <p>
+                    <label for='chemical-formula'>Chemical Formula</label>
+                    <output id='chemical-formula'>{{state.formula}}</span>
+                    </p>
+                    <p colspan=3>
+                        <label for='smiles-output'>SMILES</label>
+                        <input type='text' id="smiles-output" v-model='state.SMILES'>
+                        <input type="button" id='generate-from-smiles' value='Generate' @click="onGenerateFromSmiles">
+                        
+                        
+                    </p>
+                    
+                    <p>
+                        <label for='cas-number'>CAS Number</label>
+                        <output id="cas-number" size=20 v.model='state.CAS'>{{state.CAS}}</output>
+                    </p>
+                    <p>
+                        <label for='upload'>Upload CDXML</label>
+                        <input type="file" id='upload' name='Upload cdxml'  @change="onUploadCdxml">
+                    </p>
+                </fieldset>
+                <fieldset>
+                    <legend>Properties</legend>
+                    <p>
+                        <label for='molecule-hazardous'>Hazardous</label>
+                        <input type='checkbox' id='molecule-hazardous' v-model='state.hazardous' @change='onChangeHazardous'>
+                        <input name="specify" placeholder="specify" id="molecule-hazardous-spec" v-model='state.hazardousSpec'  v-bind:style="state.specifyStyle">
+                    </p>
+                </fieldset>
+                <fieldset>
+                    <legend>Storage Conditions</legend>
+                    <p> 
+                        <label for='molecule-fridge'>Fridge</label>
+                        <input type='checkbox' id='molecule-fridge' v-model='state.fridge'>
+                        <label for='molecule-light'>Light</label>
+                        <input type='checkbox' id='molecule-light' v-model='state.light'>
+                    </p>
+                </fieldset>
+                <fieldset>  
+                    <legend>Supplier Info</legend>
+                    <p>
+                        <label for='molecule-supplier'>Supplier</label>
+                        <input list='suppliers' name="Supplier" id="molecule-supplier" v-model='state.supplier' @input="searchSupplier">
+                        <datalist id="suppliers">
+                            <option v-for="item in state.existingSuppliers" :value="item.code">{{item}}</option>
+                        </datalist>
+                    </p>
+                    <p>
+                        <label for='molecule-synthby'>Synthesized by</label>
+                        <input list='Synthby' id="molecule-synthby" v-model='state.synthBy' @input="searchSynthby">
+                        <datalist id="suppliers">
+                            <option v-for="item in state.existingSynthesizers" :value="item.code">{{item}}</option>
+                        </datalist>
+                    </p>
+                    <p>
+                        <label for='rec-date'>Receiving date</label>
+                        <input name="recdate" id="rec-date"  v-model='state.recDate'>
+                    </p>
+                </fieldset>
+                <fieldset>
+                    <legend>Additional Info</legend>
+                    <label for='comments'>Additional comments</label>
+                    <textarea id='comments' v-model='state.comments' rows="4" cols="50"></textarea>
+                </fieldset>
+                <div>
+                    <button @click="save">Save Molecule</button>
+                </form>
+            </div>
+            <script type="text/javascript">
+                
+                
+                
+                //Setup vue APP
+                require(["openbis", "openbis-functions"
+                , "lib"],
+                function(openbis, functions, lib) {
+                    // get a reference to AS API
+                    var v3 = new openbis("https://openbis-empa-lab503.ethz.ch:443/openbis/openbis/rmi-application-server-v3.json");
+                    // login to obtain a session token (the token it is automatically stored in openbis object a nd will be used for all subsequent API calls)
+                    v3.login('basi_admin', 'Aiqu9aiB').done(function(token){
+                        Vue.createApp({
+                            setup() {
+                                const state = Vue.reactive(
+                                {
+                                    nameInput: null,
+                                    permId: null,
+                                    code: null,
+                                    ID: null,
+                                    number: null,
+                                    IUPAC: null,
+                                    infoMessage: null,
+                                    moleculeName: null,
+                                    formula: null,
+                                    SMILES: null,
+                                    CAS: null,
+                                    hazardous: false,
+                                    hazardousSpec: null,
+                                    fridge: false,
+                                    light: false,
+                                    supplier: null,
+                                    recDate: null,
+                                    synthBy: null,
+                                    comments: null,
+                                    availableMolecules: {},
+                                    openbisAPI: v3,
+                                    jsme: null,
+                                    existingSynthesizers: {},
+                                    existingSuppliers: null,
+                                    depict: 'depict',
+                                    openBabel: null,
+                                    hazardousSpecFocus: null,
+                                    specifyStyle: {}
+                                }
+                                )
+                                
+                                //const hazardousSpecFocus =  Vue.ref(null);
+                                
+                                async function  selectMolecule(event){
+                                    if(event){
+                                        mol = await functions.getMolecule(state.openbisAPI, event.target.value);
+                                        innerMol = Object.entries(mol)[0][1]
+                                        state.permId = innerMol.permId.permId;
+                                        state.code = innerMol.code;
+                                        state.ID = innerMol.properties['MOLECULE.ID'];
+                                        state.number = innerMol.properties['MOLECULE.NUMBER'];
+                                        state.IUPAC = innerMol.properties['MOLECULE.IUPAC'];
+                                        state.SMILES = innerMol.properties['MOLECULE.SMILES'];
+                                        state.formula = innerMol.properties['MOLECULE.FORMULA'];
+                                        state.CAS = innerMol.properties['MOLECULE.CAS'];
+                                        state.hazardous = innerMol.properties['MOLECULE.HAZARDOUS'];
+                                        state.hazardousSpec = innerMol.properties['MOLECULE.HAZARDOUS_SPEC'];
+                                        state.supplier = innerMol.properties['MOLECULE.SUPPLIER'];
+                                        state.synthBy = innerMol.properties['MOLECULE.SYNTHBY'];
+                                        state.fridge = innerMol.properties['MOLECULE.FRIDGE'];
+                                        state.light = innerMol.properties['MOLECULE.NO_LIGHT'];
+                                        state.comments = innerMol.properties['MOLECULE.COMMENTS'];
+                                        identifiers = await lib.getMoleculeIdentifier(innerMol.properties['MOLECULE.IUPAC']);
+                                        state.jsme.readMolFile(identifiers.JME);
+                                    }
+                                    
+                                }
+                                async function onGenerateFromName(event){
+                                    await Vue.nextTick()
+                                    state.infoMessage = 'getting identifiers from CACTUS API'
+                                    identifiers = await lib.getMoleculeIdentifier(state.IUPAC);
+                                    state.infoMessage = 'Done!'
+                                    state.IUPAC = identifiers.IUPAC;
+                                    state.SMILES = identifiers.SMILES;
+                                    state.formula = identifiers.FORMULA;
+                                    state.CAS = identifiers.CAS;
+                                    state.ID = lib.randomID(state.IUPAC);
+                                    state.jsme.readMolFile(identifiers.JME);
+                                }
+                                
+                                async function onGenerateFromSmiles(event){
+                                    await Vue.nextTick()
+                                    state.infoMessage = 'getting identifiers from CACTUS API'
+                                    identifiers = await lib.getMoleculeIdentifier(state.SMILES);
+                                    console.log(identifiers);
+                                    state.IUPAC = identifiers.IUPAC;
+                                    state.SMILES = identifiers.SMILES;
+                                    state.formula = identifiers.FORMULA;
+                                    state.CAS = identifiers.CAS;
+                                    state.ID = lib.randomID(state.IUPAC);
+                                    state.jsme.readMolFile(identifiers.JME);
+                                }
+                                
+                                
+                                async function updateList(){
+                                    await functions.findAllMolecules(state.openbisAPI);
+                                    state.availableMolecules = mols.objects.map(e => {return {code:e.code, permId:e.permId}});
+                                    state.existingSuppliers = mols.objects.map(e => {return e.properties["MOLECULE.SUPPLIER"]});
+                                }
+                                
+                                async function save(){
+                                    properties = {
+                                        ID:state.ID, 
+                                        number:state.number, 
+                                        IUPAC:state.IUPAC, 
+                                        SMILES:state.SMILES,
+                                        CAS:state.CAS,
+                                        FORMULA:state.formula,
+                                        HAZARDOUS:state.hazardous,
+                                        HAZARDOUS_SPEC:state.hazardousSpec,
+                                        SUPPLIER:state.supplier,
+                                        SYNTHBY:state.synthBy,
+                                        NO_LIGHT: state.light,
+                                        FRIDGE: state.fridge,
+                                        COMMENTS: state.comments
+                                        
+                                    }
+                                    if(state.permId & window.confirm('This will PERMANENTLY overwrite the existing molecule. Accept with ok, with cancel a new molecule will be created')){
+                                        await functions.updateMolecule(state.openbisAPI, state.permId, properties);
+                                    }else{
+                                        await functions.createMolecule(state.openbisAPI, properties);
+                                    }
+                                    await selectMolecule({target:{value:state.permId}});
+                                    await updateList();
+                                }
+                                async function searchSupplier(){
+                                    res = await functions.searchProperties(state.openbisAPI, "MOLECULE.SUPPLIER", state.supplier)
+                                    suppliers = res.objects.map(e=>{return e.properties["MOLECULE.SUPPLIER"]});
+                                    state.existingSuppliers = suppliers;
+                                }
+                                
+                                async function searchSynthby(){
+                                    res = await functions.searchProperties(state.openbisAPI, "MOLECULE.SYNTHBY", state.supplier)
+                                    synthBy = res.objects.map(e=>{return e.properties["MOLECULE.SYNTHBY"]});
+                                    state.existingSynthesizers = synthBy;
+                                }
+                                async function changeDrawMode(){
+                                    state.depict = (state.depict == 'depict' ? 'nodepict' : 'depict');
+                                    state.jsme.options(state.depict);
+                                    state.SMILES = state.jsme.smiles();
+                                    try{
+                                        await onGenerateFromSmiles({});
+                                    }
+                                    catch(e){
+                                        state.infoMessage = e;
+                                        state.IUPAC = null;
+                                        state.formula = await lib.getStructure(state.SMILES, 'formula');
+                                        state.CAS = null;
+                                        ID = lib.randomID("unknown");
+                                    }
+                                    
+                                }
+                                
+                                async function onUploadCdxml(event){
+                                    const [file] = event.target.files
+                                    if (!file) return
+                                    const data = await file.text()
+                                    var conv = new state.openBabel.ObConversionWrapper();
+                                    conv.setInFormat('', 'CDX');
+                                    var mol = new state.openBabel.OBMol();  // create a new molecule object...
+                                    conv.readString(mol, data);  // ... and load it with input data
+                                    conv.setOutFormat('', 'chemical/x-daylight-smiles');  // set out format by file extension
+                                    var outData = conv.writeString(mol, false);  // get output data, do not trim white spaces
+                                    debugger
+                                }
+                                
+                                function onChangeHazardous(event){
+                                    state.specifyStyle = (state.hazardousSpec ? {"background-color":'white'} : {"background-color":'red'});
+                                }
+                                
+                                return {state, 
+                                    selectMolecule, onGenerateFromName, save, 
+                                    searchSupplier, searchSynthby, 
+                                    changeDrawMode, onGenerateFromSmiles, onUploadCdxml, onChangeHazardous
+                                    }
+                                },
+                                async created()
+                                {
+                                    mols = await functions.findAllMolecules(this.state.openbisAPI);
+                                    this.state.availableMolecules = mols.objects.map(e => {return {code:e.code, permId:e.permId}});
+                                },
+                                mounted(){
+                                    this.state.jsme = new JSApplet.JSME("smile-canvas", {options: "depict,markAtomOnly" });
+                                    var OpenBabel = OpenBabelModule();
+                                    this.state.openBabel = OpenBabel;
+                                    OpenBabel.onRuntimeInitialized = function()
+                                    {
+                                        console.log('done')
+                                    }
+                                    
+                                }
+                            }).mount('#app')
+                        }); 
+                        console.log('done')
+                    });     
+                    
+                </script>
+            </body>
+            
+            </html> 

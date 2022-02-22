@@ -1,0 +1,81 @@
+body {
+  margin: 0;
+  font-size: 15px;
+  font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
+}
+
+.jsme-editor {
+  height: 30vh;
+  display: flex;
+}
+
+.input,
+.output {
+  overflow: auto;
+  width: 50%;
+  height: 100%;
+  box-sizing: border-box;
+  padding: 0 20px;
+}
+
+.input {
+  border: none;
+  border-right: 1px solid #ccc;
+  resize: none;
+  outline: none;
+  background-color: #f6f6f6;
+  padding: 20px;
+  border-radius: 10%;
+}
+
+code {
+  color: #f66;
+}
+
+/* Set additional styling options for the columns*/
+/* .column {
+    float: left;
+    width: 20%;
+} */
+.button {
+    display: inline-block;
+    width: calc(50% - 4px);
+    margin: 0 auto;
+    border-radius: 10%;
+}
+
+/* Field set */
+
+table{
+    border-spacing: 15px;
+    border-radius: 10%;
+}
+
+table, th, td {
+    border: 2px solid black;
+    padding: 5px;
+    border-radius: 10%;
+  }
+
+fieldset { 
+    display: table;
+    border-left: none;
+    border-right: none;
+    border-bottom: none;
+}
+fieldset legend {
+    font-size: larger;
+    font-weight: bold;
+    text-align: start;
+}
+form  { display: table;      }
+form p { 
+    display: table-row;  
+    float: none;
+}
+form label { 
+    display: table-cell; 
+    width: 40%;
+}
+
+
