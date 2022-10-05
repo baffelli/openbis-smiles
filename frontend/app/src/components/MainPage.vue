@@ -52,7 +52,7 @@ async function handleChangedStructure(smiles: string){
 <template>
     <Molecule :mol="mol" :config="molConfig" @change="handleChange"></Molecule>
     <div>
-        <ChemDraw width="1500px" height="300px" :molecule="mol" @structure-changed="handleChangedStructure"></ChemDraw>
+        <ChemDraw width="500px" height="500px" :molecule="mol" @structure-changed="handleChangedStructure"></ChemDraw>
     </div>
     <div id="molcanvas"></div>
 

@@ -20,3 +20,4 @@ services:
       - ./frontend/app:/usr/app
     ports:
       - 8080:5173
+      - 8081:4173

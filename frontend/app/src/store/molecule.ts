@@ -58,18 +58,19 @@ export const useMolecule = defineStore<string, Molecule,  Getters, Actions>(
         actions:
         {
             async populate(name: string, type: string){
-                const val = await Mol.getPubchemId(name, type)
-                const lcss = await Mol.pubChemLCSS(val)
-                this.cid = val;
-                debugger
-                // const val = await Mol.getMoleculeIdentifier(name)
-                // if type !== name()
-                // this.name = this.name;
-                // this.iupacName = val.iupacName;
-                // this.cas = val.cas;
-                // this.smiles = val.smiles;
-                // this.formula = val.formula;
-                // this.jme = val.jme;
+                // const val = await Mol.getStructure(name, type)
+                // const lcss = await Mol.pubChemLCSS(val)
+                // this.cid = val;
+                // debugger
+                const val = await Mol.getMoleculeIdentifier(name)
+                if (type !== "name"){
+                    this.name = this.name;
+                }
+                this.iupacName = val.iupacName;
+                this.cas = val.cas;
+                this.smiles = val.smiles;
+                this.formula = val.formula;
+                this.jme = val.jme; 
             },
             async generateFromIdentifier(identifier: string, type: string){
                 const iupacName = await Mol.getStructure(identifier, 'iupac_name')

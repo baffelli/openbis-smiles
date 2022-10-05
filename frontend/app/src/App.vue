@@ -9,6 +9,7 @@ import { router } from './router/router';
 
 
 onBeforeMount(async () => {
+
   const store = useUser();
   try{
     await store.init();

@@ -1,14 +1,17 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 
+import pluginRewriteAll from '@thirdroom/vite-plugin-rewrite-all';
+import basicSsl from '@vitejs/plugin-basic-ssl';
 //Resolve @
 const path = require("path");
 export default defineConfig({
-    plugins: [vue()],
+    plugins: [pluginRewriteAll(), vue(), basicSsl()],
+    appType: 'mpa',
     resolve: {
         alias: {
             "@": path.resolve(__dirname, "./src"),
-        },
+        }
     },
     server: {
         host: true,
@@ -30,8 +33,14 @@ export default defineConfig({
     ,
     build:
     {
-        target: 'es2021',
-        supported: ['array-spread']
-    }
+        target: 'es2020',
+        supported: ['array-spread'],
+    },
+    optimizeDeps: {
+        esbuildOptions: {
+            target: "es2020",
+        }
+    },
+
 }
 );

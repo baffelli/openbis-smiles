@@ -18,6 +18,7 @@ RUN npm install --verbose
 # Copy the folders from the workdir
 COPY . .
 
+# Generate 
 
 
 CMD ["npm", "run", "dev"]
