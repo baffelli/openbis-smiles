@@ -61,7 +61,7 @@ fun main(args: Array<String>) {
     val parser = ArgParser("chemicals cleaner")
     val inputChemicals by parser.argument(ArgType.String, description = "Input chemicals")
     val chemicalConfig by parser.argument(ArgType.String, description = "Molecule mapping")
-    val nci by parser.argument(ArgType.String, description = "NCI Database in SDF Format")
+    val nci by parser.argument(ArgType.String, description = "ChEBI Database in SDF Format (See: https://cactus.nci.nih.gov/download/nci/#release-4)")
     val dbFile by parser.argument(ArgType.String, description = "Path to SQLLite database")
     val reimportDB by parser.option(ArgType.Boolean, "reimport", description = "Force reimport database").default(false)
     parser.parse(args)
@@ -77,9 +77,7 @@ fun main(args: Array<String>) {
         createChemicals(db)
         log.info("Chemicals DB initialised")
         log.info("Loading chemicals from SDF into SQLite database ${db.url}")
-        val sdf = openSDF(nci).use {
-            sdfToSQL(it, db, 1e6.toInt())
-        }
+        sdfToSQL(nci, db)
         log.info("Finished loading chemicals into SQLite database")
     }
     log.info("Processing input chemicals")
@@ -87,6 +85,6 @@ fun main(args: Array<String>) {
     val mappedColl = getMoleculesFromFile(File(inputChemicals), mapping).cast<SourceMolecule>()
     log.info("${mappedColl.rowsCount()} chemicals to process")
     val validMolecules = cleanSourceMolecule(db, mappedColl.map{SourceMolecule(it.toMap())})
-    log.info("${validMolecules.size} chemicals remaining after processing")
+    //log.info("${validMolecules.size} chemicals remaining after processing")
 
 }

@@ -88,7 +88,7 @@ dependencies {
     implementation("io.ktor:ktor-client-core:${ktorVer}")
     implementation("io.ktor:ktor-client-cio:${ktorVer}")
     implementation("io.ktor:ktor-client-content-negotiation:${ktorVer}")
-    //implementation("io.ktor:ktor-serialization-kotlinx-json:${ktorVer}")
+    implementation("io.ktor:ktor-serialization-kotlinx-json:${ktorVer}")
 
     //Command line parsing
     implementation("com.github.ajalt.clikt:clikt:3.5.0")

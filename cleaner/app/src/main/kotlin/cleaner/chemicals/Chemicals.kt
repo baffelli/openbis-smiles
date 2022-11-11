@@ -21,17 +21,29 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import io.ktor.client.plugins.contentnegotiation.*
+import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.json.Json
-import org.jetbrains.exposed.sql.Database
-import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.transaction
+import java.lang.IllegalArgumentException
+import kotlinx.coroutines.*
+import kotlinx.serialization.*
+import kotlinx.serialization.json.*
+import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
+import org.jetbrains.exposed.sql.transactions.experimental.suspendedTransactionAsync
+import org.slf4j.LoggerFactory
+import java.lang.Thread.*
+import kotlin.concurrent.thread
+import kotlin.or
 
 @Serializable
 data class CAS(val first: String, val middle: String, val checksum: String) {
     init {
         val computedChecksun = checksumCAS(first + middle)
         val checksumNumber = checksum.toInt()
-        require(computedChecksun == checksumNumber) {}
+        require(computedChecksun == checksumNumber) {
+            "CAS Checksum invalid: ${computedChecksun} != ${checksumNumber} for CAS ${first}-${middle}-${checksum}"
+        }
     }
 
     fun toCASString(): String {
@@ -39,9 +51,18 @@ data class CAS(val first: String, val middle: String, val checksum: String) {
     }
 
     companion object {
-        fun fromString(cas: String): CAS {
-            val components = splitCAS(cas)
-            return CAS(components[0], components[1], components[2])
+        fun fromString(cas: String): CAS? {
+            return if (checkCASPattern(cas)) {
+                val components = splitCAS(cas)
+                try {
+                    val cas1 = CAS(components[0], components[1], components[2])
+                    cas1
+                } catch (e: IllegalArgumentException) {
+                    return null
+                }
+            } else {
+                null
+            }
         }
     }
 }
@@ -108,7 +129,7 @@ private fun checksumCAS(input: String): Int {
  * Represents an (abstract molecule)
  */
 @Serializable
-data class Molecule(val iupacName: String, val cas: CAS, val inChi: String, val products: List<Product>?)
+data class Molecule(val iupacName: String, val cas: CAS?, val inChi: String?, val products: List<Product>?)
 
 /**
  * Represent a concrete product derived from a molecule
@@ -131,7 +152,7 @@ data class SourceMolecule(val values: Map<String, Any?>) {
     private val defaultMap = values.withDefault { null }
     val name: String by defaultMap
     val formula: String? by defaultMap
-    val cas: String by defaultMap
+    val cas: String? by defaultMap
     val supplier: String? by defaultMap
     val articleNumber: String? by defaultMap
     val lotNumber: String? by defaultMap
@@ -152,19 +173,33 @@ data class SourceMolecule(val values: Map<String, Any?>) {
  * Represents the response of the CAS registry service
  */
 @Serializable
-data class CASEntry(
-    val uri: String,
-    val rn: String,
-    val name: String,
-    val image: String,
-    val inchi: String,
-    val inchiKey: String,
-    val smile: String,
-    val canonicalSmile: String,
-    val molecularFormula: String,
-    val synonyms: List<String>
-)
+sealed class CASResponse {
+    @Serializable
+    @SerialName("casentry")
+    data class CASEntry(
+        val uri: String,
+        val rn: String,
+        val name: String,
+        val image: String,
+        val inchi: String,
+        val inchiKey: String,
+        val smile: String,
+        val canonicalSmile: String,
+        val molecularFormula: String,
+        val synonyms: List<String>
+    ) : CASResponse()
 
+    @Serializable
+    @SerialName("caserror")
+    data class CASError(val message: String) : CASResponse()
+}
+
+object CASSerializer : JsonContentPolymorphicSerializer<CASResponse>(CASResponse::class) {
+    override fun selectDeserializer(element: JsonElement) = when {
+        "message" in element.jsonObject -> CASResponse.CASError.serializer()
+        else -> CASResponse.CASEntry.serializer()
+    }
+}
 
 private val cactusPath = URI("https://cactus.nci.nih.gov/chemical/structure/")
 
@@ -184,14 +219,26 @@ suspend fun queryCAS(client: HttpClient, cas: CAS): Molecule? {
             parameters.append("cas_rn", cas.toCASString())
         }
     }
-    val result: CASEntry = response.body()
-    return Molecule(result.name, cas, result.inchi, null)
+    println(response.status)
+    val result = Json { ignoreUnknownKeys = true }.decodeFromString(CASSerializer, response.body())
+
+    val mol = when (result) {
+        is CASResponse.CASEntry -> {
+            Molecule(result.name, cas, result.inchi, null)
+        }
+
+        else -> {
+            null
+        }
+    }
+    return mol
+
 }
 
-suspend fun queryCactus(client: HttpClient, identifier: StructureIdentifiers, cas: CAS): String? {
-    val path = URLEncoder.encode(cas.toCASString(), "UTF-8")
+suspend fun queryCactus(client: HttpClient, identifierType: StructureIdentifiers, identifier: String): String? {
+    val path = URLEncoder.encode(identifier, "UTF-8")
     val result = try {
-        val reqPath = cactusPath.resolve("${path}/${identifier.id}").toString()
+        val reqPath = cactusPath.resolve("${path}/${identifierType.id}").toString()
         val response = client.get(reqPath)
         val resp = when (response.status) {
             HttpStatusCode.OK -> response.bodyAsText()
@@ -204,15 +251,77 @@ suspend fun queryCactus(client: HttpClient, identifier: StructureIdentifiers, ca
     return result
 }
 
-suspend fun moleculeFromSourceMolecule(cas: String, mol: List<SourceMolecule>, client: HttpClient): Molecule? {
-    val validCas = CAS.fromString(cas)
-    val validMol = queryCAS(client, validCas)
-    if (validMol != null) {
-        val prods = mol.map { prod -> Product(prod.name, prod.supplier, prod.purity, prod.packageSize, prod.location) }
-        return Molecule(validMol.iupacName, validCas, validMol.inChi, prods)
+suspend fun moleculeFromCactus(identifier: CAS, client: HttpClient): Molecule? {
+
+    val validMol = queryCAS(client, identifier)
+    return if (validMol != null) {
+        Molecule(validMol.iupacName, identifier, validMol.inChi, null)
     } else {
-        return null
+        null
     }
+}
+
+fun checkMolecules(db: Database, mol: List<SourceMolecule>): Map<SourceMolecule, Molecule?> {
+    val res = transaction(db) {
+        val validCas = mol.map { it.cas }.filterNotNull()
+        val query = Chemical.select {
+            Chemical.cas inList validCas
+        }
+        val res = query.mapNotNull {
+            Molecule(
+                it[Chemical.iupacName],
+                CAS.fromString(it[Chemical.cas])!!,
+                it[Chemical.inchiKey],
+                null
+            )
+        }
+        val matched = mol.map { currentMol ->
+            val res = res.find { row ->
+                row.cas?.toCASString() == currentMol.cas
+            }
+            currentMol to res
+        }.associate { (k, v) -> k to v }
+        matched
+    }
+    return res
+}
+
+suspend fun checkMolecule(db: Database, client: HttpClient, mol: SourceMolecule): Molecule {
+    val logger = LoggerFactory.getLogger("checkMolecule")
+    val mol = suspendedTransactionAsync(db = db) {
+        val query = Chemical.selectAll()
+        val parsedCas = mol.cas?.let { CAS.fromString(it) }
+        when {
+            (parsedCas != null) -> query.andWhere {
+                logger.info("Checking CAS")
+                Chemical.cas eq parsedCas.toCASString()
+            }
+
+            (mol.formula != null && parsedCas == null) -> query.andWhere {
+                logger.info("Checking formula")
+                Chemical.formula eq mol!!.formula.orEmpty()
+            }
+
+            (mol.formula == null && parsedCas == null) -> query.andWhere {
+                logger.info("Checking formula")
+                Chemical.iupacName eq mol!!.name.orEmpty()
+            }
+
+            else -> {
+                query.andWhere { not(Chemical.formula eq Chemical.formula) }
+            }
+        }
+        val matches = query.filterNotNull().take(1).map {
+            Molecule(it[Chemical.iupacName], CAS.fromString(it[Chemical.cas])!!, it[Chemical.inchiKey], null)
+        }.getOrElse(0) { ind ->
+            logger.info("Checking CAS online")
+            val mol = parsedCas?.let { moleculeFromCactus(it, client) } ?: Molecule(mol.name, null, null, null)
+            mol
+        }
+        logger.info("Input ${mol} gave ${matches}")
+        matches
+    }.await()
+    return mol
 }
 
 /**
@@ -221,23 +330,120 @@ suspend fun moleculeFromSourceMolecule(cas: String, mol: List<SourceMolecule>, c
  * To do so, we check the molecules against
  * a SQL Database that contains the PubCHem molecule DB
  */
-fun cleanSourceMolecule(db: Database, chems: List<SourceMolecule>): List<Molecule> {
-    val matches = transaction(db) {
-        chems.groupBy { it.cas }.map { (cas, mols) ->
-            val matchedChem = Chemical.select {
-                Chemical.cas eq cas
-            }.map {
-                Molecule(it[Chemical.iupacName], CAS.fromString(it[Chemical.cas]), it[Chemical.inChi], null)
-            }
-            val prods = mols.map{Product(it.name, it.supplier, it.purity, it.packageSize, it.location)}
-            val mol = if(!matchedChem.isEmpty()) {
-                val firstChem = matchedChem.get(0)
-                Molecule(firstChem.iupacName, firstChem.cas, firstChem.inChi, prods)
-            }else{
-                null
-            }
-                mol
+fun cleanSourceMolecule(db: Database, chems: List<SourceMolecule>): Unit {
+    val logger = LoggerFactory.getLogger("cleanMolecules")
+    val matchedInDB = checkMolecules(db, chems)
+    val matchCount = matchedInDB.filterValues { it != null }.count()
+    logger.info("Matched ${matchCount} out ouf ${chems.size}")
+    logger.info("Matching remaining chemicals against database")
+    val sem = Semaphore(256)
+    val client = HttpClient(CIO) {
+        expectSuccess = false
+        install(ContentNegotiation) {
+            json(Json {
+                prettyPrint = true
+                isLenient = true
+                ignoreUnknownKeys = true
+            })
+        }
+        install(HttpTimeout) {
+            requestTimeoutMillis = 2000
         }
     }
-    return matches.filterNotNull()
+    val result =
+        CoroutineScope(Dispatchers.IO.limitedParallelism(10)).async {
+            println("Hello from ${this}")
+            //val res = sem.withPermit {
+                val allMols = matchedInDB.filterValues { it == null }.filterKeys { it.cas != null }.mapValues { (k, v) ->
+                    val mol = k.cas?.let { CAS.fromString(it) }?.let { queryCAS(client, it) }
+                    logger.info("${currentThread()} :Matching ${k} gave ${mol}, ${sem.availablePermits}")
+                    mol
+                }
+                allMols
+            }
+            //res
+//            allMols
+//        }
+//    }
+        //}
+
+    thread() {
+        runBlocking { result.await() }
+
 }
+}
+//    val matched = chems.map { chem ->
+//        val matched = transaction(db) {
+//            val query = Chemical.selectAll()
+//            val parsedCas = chem.cas?.let { CAS.fromString(it) }
+//            when {
+//                (parsedCas != null) -> query.andWhere {
+//                    Chemical.cas eq parsedCas.toCASString()
+//                }
+//
+//                (chem.formula != null && parsedCas == null) -> query.andWhere {
+//                    println("Here")
+//                    Chemical.formula eq chem!!.formula.orEmpty()
+//                }
+//
+//                (chem.formula == null && parsedCas == null) -> query.andWhere {
+//                    println("IYOAC")
+//                    Chemical.iupacName eq chem!!.name.orEmpty()
+//                }
+//            }
+//            //println(query.prepareSQL(this).toString())
+//            val matches = query.filterNotNull().take(1).map {
+//                Molecule(it[Chemical.iupacName], CAS.fromString(it[Chemical.cas])!!, it[Chemical.inchiKey], null)
+//            }.getOrElse(0) {
+//                runBlocking {
+//                    val mol = moleculeFromCactus(parsedCas, client)
+//                    println(mol)
+//                }
+//            }
+//            println("Chemical ${chem} gave ${matches}")
+//            matches
+//        }
+//    }
+//    return matched
+//}
+//    println(allCas.distinct().size)
+//    val matches = transaction(db) {
+//        val matched = Chemical.select {
+//            (Chemical.cas inList allCas)
+//        }
+//        matched.mapNotNull {
+//            Molecule(it[Chemical.iupacName], CAS.fromString(it[Chemical.cas])!!, it[Chemical.inchiKey], null)
+//        }
+//    }
+//        chems.withIndex().map {( idx, chem) ->
+//            if (idx % 1000 ==0 ) println(idx)
+//            val query = Chemical.selectAll()
+//            val parsedCas = chem.cas?.let { CAS.fromString(it) }
+//            parsedCas?.let {
+//                query.andWhere {
+//                    Chemical.cas eq parsedCas.toCASString()
+//                }
+//            }
+
+//            query.mapNotNull {
+//                val mol =
+//                    Molecule(it[Chemical.iupacName], CAS.fromString(it[Chemical.cas])!!, it[Chemical.inchiKey], null)
+//                mol
+//            }
+//            val matchedChem = Chemical.select {
+//                (Chemical.cas eq CAS.fromString(chem.cas).toCASString())
+//            }.mapNotNull {
+//                Molecule(it[Chemical.iupacName], CAS.fromString(it[Chemical.cas]), it[Chemical.inchiKey], null)
+//            }
+//            val prods = mols.map{Product(it.name, it.supplier, it.purity, it.packageSize, it.location)}
+//            val mol = if(!matchedChem.isEmpty()) {
+//                val firstChem = matchedChem.get(0)
+//                Molecule(firstChem.iupacName, firstChem.cas, firstChem.inChi, prods)
+//            }else{
+//                null
+//            }
+//                mol
+//}.flatMap { it -> Unit }
+//}
+//return res.filterNotNull()
+//}
