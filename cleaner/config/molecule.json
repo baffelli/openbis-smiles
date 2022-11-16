@@ -1,0 +1,18 @@
+{
+    "type": "SourceMolecule",
+    "fields": {
+        "name":"$NAME",
+        "location":"LOCATION",
+        "cas":"CAS",
+        "formula":"FORMULA",
+        "supplier":"SUPLIER",
+        "articleNumber":"ARTICLE_NUMBER",
+        "lotNumber":"LOT_NUMBER",
+        "purity":"PURITY",
+        "packageSize":"PACKAGE_SIZE",
+        "laboratory":"LABORATORY",
+        "whoOrdered":"WHO_ORDERED_IT",
+        "orderDate":"DATE_ORDER",
+        "available":"AVAILABLE"
+    }
+}

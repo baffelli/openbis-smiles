@@ -6,9 +6,6 @@ import com.actelion.research.chem.io.SDFileParser
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.kotlinx.dataframe.DataFrame
-import org.jetbrains.kotlinx.dataframe.api.into
-import org.jetbrains.kotlinx.dataframe.api.rename
-import org.jetbrains.kotlinx.dataframe.api.select
 import org.jetbrains.kotlinx.dataframe.io.readTSV
 import org.jetbrains.kotlinx.dataframe.name
 import org.slf4j.LoggerFactory
@@ -20,7 +17,10 @@ import java.nio.charset.StandardCharsets
 
 import cleaner.io.Chemical
 import org.jetbrains.exposed.sql.batchInsert
+import org.jetbrains.kotlinx.dataframe.api.*
 import org.jetbrains.kotlinx.dataframe.impl.asList
+import java.lang.reflect.Field
+import javax.management.monitor.StringMonitor
 
 //@OptIn(ExperimentalSerializationApi::class)
 //fun getMoleculesFromOpenbis(
@@ -37,12 +37,12 @@ import org.jetbrains.kotlinx.dataframe.impl.asList
 //    return coll.map { it -> SourceMolecule(objectConfig.mapSamples(it)) }
 //}
 
-fun getMoleculesFromFile(file: File, mapping: OpenbisPropertyMapping): DataFrame<*> {
+fun <K> getValuesFromFile(file: File, mapping: OpenbisPropertyMapping): DataFrame<K> {
     val nameMapping = mapping.fields
     val df = DataFrame.readTSV(file, charset = StandardCharsets.UTF_16)
-    return df.select { cols { nameMapping.containsKey(it.name) } }
-        .rename { cols { nameMapping.containsKey(it.name) } }
-        .into { nameMapping.getOrDefault(it.name, "test") }
+    val transformed = mapping.transformMap(df.toMap())
+    val mappedDf = mapping.transformMap(df.toMap()).toDataFrame().cast<K>()
+    return mappedDf
 
 }
 
@@ -115,7 +115,15 @@ fun <R> SDFileParser.use(code: ((SDFileParser) -> R)): R {
 
 
 val ChEBIFields =
-    mapOf("CAS Registry Numbers" to "cas", "ChEBI Name" to "chEBIName", "InChIKey" to "inchiKey", "InChI" to "inchi", "IUPAC Names" to "iupacName", "Formulae" to "formula")
+    mapOf(
+        "ChEBI ID" to "ID",
+        "CAS Registry Numbers" to "cas",
+        "ChEBI Name" to "chEBIName",
+        "InChIKey" to "inchiKey",
+        "InChI" to "inchi",
+        "IUPAC Names" to "iupacName",
+        "Formulae" to "formula"
+    )
 private val NCIFields = mapOf<String, String>(
     "CAS" to "cas",
     "Standard InChi" to "inchi",
@@ -123,6 +131,57 @@ private val NCIFields = mapOf<String, String>(
     "DTP names" to "name",
     "Formula" to "formula"
 )
+
+
+class FieldMapping(
+    val id: String,
+    val cas: String,
+    val inchi: String,
+    val inchiKey: String,
+    val iupacName: String,
+    val formula: String
+){
+    fun getSDFAttibutes(): List<String>{
+        return listOf(id, cas, inchi, inchiKey, formula, iupacName)
+    }
+}
+
+enum class ChemicalsSource(val fields: FieldMapping) {
+
+    CHEBI(
+        FieldMapping(
+            "ChEBI ID",
+            "CAS Registry Numbers",
+            "InChI",
+            "InChIKey",
+            "ChEBI Name",
+            "Formulae"
+        )
+    ),
+    NCI(
+        FieldMapping(
+            "NCICADD_FICUS_ID",
+            "CAS",
+            "Standard InChi",
+            "Standard InChIKey",
+            "DTP names",
+            "Formula"
+        )
+    )
+}
+
+/***
+ * Adapter class representing a
+ * generic database entry for chemicals
+ */
+data class ChemicalsDBEntry(private val vals: Map<String, String?>, private val mapping: ChemicalsSource) {
+    val id: String = vals[mapping.fields.id]!!
+    val CAS: String = vals[mapping.fields.cas]!!
+    val inchiKey: String = vals[mapping.fields.inchiKey]!!
+    val inchi: String  = vals[mapping.fields.inchi]!!
+    val name: String = vals[mapping.fields.iupacName]?.split("\n")?.get(0) ?: vals[mapping.fields.iupacName]!!
+    val formula: String = vals[mapping.fields.formula]!!
+}
 
 /**
  * Data class representing an NCI database entry
@@ -150,7 +209,7 @@ data class ChEBIChemical(
 data class ChEBIEntry(
     val vals: Map<String, String?>
 ) {
-    private val newVals = vals.mapKeys { (k, v) -> ChEBIFields.get(k) }.mapValues{ (k, v) -> v?.split("\n") }
+    private val newVals = vals.mapKeys { (k, v) -> ChEBIFields.get(k) }.mapValues { (k, v) -> v?.split("\n") }
     val cas: List<String> by newVals
     val inchiKey: List<String> by newVals
     val inchi: List<String> by newVals
@@ -159,36 +218,33 @@ data class ChEBIEntry(
 }
 
 
-
-
-
 /**
  * Iterates over a SDF file and stores the data
  * in a SQLLIte database
  */
-fun sdfToSQL(sdfPath: String, db: Database, batchSize: Int = 1000): Unit {
+fun sdfToSQL(sdfPath: String, db: Database, fileType: ChemicalsSource, batchSize: Int = 1000): Unit {
     val logger = LoggerFactory.getLogger("SQL")
-    val fields = ChEBIFields.keys.asList()
+    val fields = fileType.fields.getSDFAttibutes()
     openSDF(sdfPath, fields).use { sdf ->
-
-        logger.info("Available fields ${sdf.fieldNames.toList()}")
+        logger.info("Selected fields ${fields}, Available fields ${sdf.fieldNames.toList()}")
         transaction(db) {
             for ((index, batch) in sdf.batchedIterator(fields, batchSize).withIndex()) {
                 //Discard compounds without CAS Entry
                 val entries = batch.filter { it.values.all { it != null } }.map {
-                    val compound = ChEBIEntry(it)
-                    val spread = (compound.cas zip compound.iupacName).map { (cas, iupac) ->
-                        CAS.fromString(cas)?.let { validCas ->
-                            ChEBIChemical(validCas, iupac, compound.formula[0], compound.inchiKey[0], compound.inchi[0])
-                        }
-                    }.filterNotNull()
-                    spread
-                }.flatMap { it }
-                Chemical.batchInsert(entries, ignore = true) { entry ->
-                    this[Chemical.cas] = entry.CAS.toCASString()
+                    val compound = ChemicalsDBEntry(it, fileType)
+
+//                    val spread = (listOf(compound.CAS) zip compound.name).mapNotNull { (cas, iupac) ->
+//                        CAS.fromString(cas)?.let { validCas ->
+//                            ChemicalsDBEntry()
+//                        }
+                    compound
+                }.filter{CAS.fromString(it.CAS) != null}
+                Chemical.batchInsert(entries, ignore = false) { entry ->
+                    this[Chemical.id] = entry.id
+                    this[Chemical.cas] = CAS.fromString(entry.CAS)!!.toCASString()
                     this[Chemical.inchiKey] = entry.inchiKey
                     this[Chemical.inchi] = entry.inchi
-                    this[Chemical.iupacName] = entry.iupacName
+                    this[Chemical.iupacName] = entry.name
                     this[Chemical.formula] = entry.formula
                 }
                 logger.info("Processing Batch ${index} with size ${batch.size}")

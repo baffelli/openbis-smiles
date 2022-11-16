@@ -1,0 +1,25 @@
+{
+  "mappings":
+  [
+  {
+    "type": "MOLECULE",
+    "fields": {
+      "iupacName": "MOLECULE.IUPAC_NAME",
+      "cas": "MOLECULE.CAS",
+      "inChi": "MOLECULE.INCHI"
+    }
+  },
+  {
+    "type": "PRODUCT",
+    "fields": {
+      "name": "PRODUCT.NAME",
+      "CAS": "PRODUCT.CAS",
+      "quantity": "PRODUCT.QUANTITY",
+      "supplier": "PRODUCT.SUPPLIER",
+      "articleNumber": "PRODUCT.ARTICLE_NUMBER",
+      "location": "PRODUCT.LOCATION",
+      "purity": "PRODUCT.PURITY"
+    }
+  }
+]
+}

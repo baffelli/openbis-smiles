@@ -8,12 +8,13 @@ import java.io.File
 import java.net.URL
 
 object Chemical : Table() {
-    val cas = varchar("cas", 12).index("IX_Chemical_CAS")
-    val inchiKey = varchar("inchi_key", 256)
-    val inchi = varchar("inchi", 4096)
-    val iupacName = varchar("iupac_name", 1024)
+    val id = varchar("id", 256)
+    val cas = varchar("cas", 14).index("IX_Chemical_CAS")
+    val inchiKey = varchar("inchi_key", 128)
+    val inchi = varchar("inchi", 8192)
+    val iupacName = varchar("iupac_name", 4096)
     val formula = varchar("formula", 1024).index("IX_Chemical_formula")
-    override val primaryKey = PrimaryKey(inchiKey, cas, iupacName, name = "PK_Chemical_CAS_inchi_name")
+    override val primaryKey = PrimaryKey(id, inchiKey, cas, iupacName, formula, name = "PK_Chemical_CAS_inchi_name")
 }
 
 object ChemicalName : Table() {
