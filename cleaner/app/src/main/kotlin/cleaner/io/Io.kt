@@ -138,12 +138,19 @@ class FieldMapping(
     val cas: String,
     val inchi: String,
     val inchiKey: String,
+    val smiles: String?,
     val iupacName: String,
     val formula: String
 ){
-    fun getSDFAttibutes(): List<String>{
-        return listOf(id, cas, inchi, inchiKey, formula, iupacName)
+    fun getSDFAttibutes(): List<String> {
+        val ls = listOf(id, cas, inchi, inchiKey, formula, iupacName)
+        return if(smiles != null) {
+            smiles?.let{ls + it} !!
+        }else{
+            ls
+        }
     }
+
 }
 
 enum class ChemicalsSource(val fields: FieldMapping) {
@@ -154,6 +161,7 @@ enum class ChemicalsSource(val fields: FieldMapping) {
             "CAS Registry Numbers",
             "InChI",
             "InChIKey",
+            "SMILES",
             "ChEBI Name",
             "Formulae"
         )
@@ -164,6 +172,7 @@ enum class ChemicalsSource(val fields: FieldMapping) {
             "CAS",
             "Standard InChi",
             "Standard InChIKey",
+            null,
             "DTP names",
             "Formula"
         )
@@ -179,43 +188,11 @@ data class ChemicalsDBEntry(private val vals: Map<String, String?>, private val 
     val CAS: String = vals[mapping.fields.cas]!!
     val inchiKey: String = vals[mapping.fields.inchiKey]!!
     val inchi: String  = vals[mapping.fields.inchi]!!
+    val smiles: String? = vals[mapping.fields?.smiles]
     val name: String = vals[mapping.fields.iupacName]?.split("\n")?.get(0) ?: vals[mapping.fields.iupacName]!!
     val formula: String = vals[mapping.fields.formula]!!
 }
 
-/**
- * Data class representing an NCI database entry
- */
-data class NCIEntry(val vals: Map<String, String>) {
-    private val newNames = vals.mapKeys { (k, v) -> NCIFields.get(k) }
-    val CAS: String by newNames
-    val inchiKey: String by newNames
-    val names: String by newNames
-    val formula: String by newNames
-}
-
-
-data class ChEBIChemical(
-    val CAS: CAS,
-    val iupacName: String,
-    val formula: String,
-    val inchiKey: String,
-    val inchi: String
-)
-
-/**
- * Represents a ChEBI entry
- */
-data class ChEBIEntry(
-    val vals: Map<String, String?>
-) {
-    private val newVals = vals.mapKeys { (k, v) -> ChEBIFields.get(k) }.mapValues { (k, v) -> v?.split("\n") }
-    val cas: List<String> by newVals
-    val inchiKey: List<String> by newVals
-    val inchi: List<String> by newVals
-    val iupacName: List<String> by newVals
-    val formula: List<String> by newVals
-}
 
 
 /**
@@ -232,7 +209,6 @@ fun sdfToSQL(sdfPath: String, db: Database, fileType: ChemicalsSource, batchSize
                 //Discard compounds without CAS Entry
                 val entries = batch.filter { it.values.all { it != null } }.map {
                     val compound = ChemicalsDBEntry(it, fileType)
-
 //                    val spread = (listOf(compound.CAS) zip compound.name).mapNotNull { (cas, iupac) ->
 //                        CAS.fromString(cas)?.let { validCas ->
 //                            ChemicalsDBEntry()
@@ -242,6 +218,7 @@ fun sdfToSQL(sdfPath: String, db: Database, fileType: ChemicalsSource, batchSize
                 Chemical.batchInsert(entries, ignore = false) { entry ->
                     this[Chemical.id] = entry.id
                     this[Chemical.cas] = CAS.fromString(entry.CAS)!!.toCASString()
+                    this[Chemical.smiles] = entry?.smiles
                     this[Chemical.inchiKey] = entry.inchiKey
                     this[Chemical.inchi] = entry.inchi
                     this[Chemical.iupacName] = entry.name

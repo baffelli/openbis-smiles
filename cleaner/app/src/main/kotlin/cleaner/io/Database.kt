@@ -13,6 +13,7 @@ object Chemical : Table() {
     val inchiKey = varchar("inchi_key", 128)
     val inchi = varchar("inchi", 8192)
     val iupacName = varchar("iupac_name", 4096)
+    val smiles = varchar("smiles", 4096).nullable()
     val formula = varchar("formula", 1024).index("IX_Chemical_formula")
     override val primaryKey = PrimaryKey(id, inchiKey, cas, iupacName, formula, name = "PK_Chemical_CAS_inchi_name")
 }

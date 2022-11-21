@@ -6,7 +6,8 @@
     "fields": {
       "iupacName": "MOLECULE.IUPAC_NAME",
       "cas": "MOLECULE.CAS",
-      "inChi": "MOLECULE.INCHI"
+      "inChi": "MOLECULE.INCHI",
+      "smiles": "MOLECULE.SMILES"
     }
   },
   {

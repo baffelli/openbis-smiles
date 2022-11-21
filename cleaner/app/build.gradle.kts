@@ -145,7 +145,8 @@ tasks.named("run") {
             "../../data/ChEBI_complete.sdf",
             "../../data/chemicals.sqlite",
             "../config/dest_molecule.json",
-            "/MATERIALS/GENERAL_MATERIALS/PRODUCTS"
+            "/MATERIALS/GENERAL_MATERIALS/PRODUCTS",
+            "--reimport"
         )
         val res = this.setProperty("args", cmdArgs)
 

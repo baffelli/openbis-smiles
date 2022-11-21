@@ -180,7 +180,7 @@ sealed class OpenBISRepresentable : OpenBISStorable {
  * Represents an (abstract molecule)
  */
 @Serializable
-data class Molecule(val iupacName: String, val cas: CAS, val inChi: String?) : OpenBISRepresentable()
+data class Molecule(val iupacName: String, val cas: CAS, val inChi: String?, val smiles: String?) : OpenBISRepresentable()
 
 
 /**
@@ -329,7 +329,7 @@ suspend fun queryCAS(client: HttpClient, cas: CAS): Molecule? {
 
     val mol = when (result) {
         is CASResponse.CASEntry -> {
-            Molecule(result.name, cas, result.inchi)
+            Molecule(result.name, cas, result.inchi, result.smile)
         }
 
         else -> {
@@ -360,7 +360,7 @@ suspend fun moleculeFromCactus(identifier: CAS, client: HttpClient): Molecule? {
 
     val validMol = queryCAS(client, identifier)
     return if (validMol != null) {
-        Molecule(validMol.iupacName, identifier, validMol.inChi)
+        Molecule(validMol.iupacName, identifier, validMol.inChi, validMol.smiles)
     } else {
         null
     }
@@ -381,7 +381,8 @@ fun checkMolecules(db: Database, mol: List<SourceMolecule>): Map<SourceMolecule,
             Molecule(
                 it[Chemical.iupacName],
                 CAS.fromString(it[Chemical.cas])!!,
-                it[Chemical.inchi]
+                it[Chemical.inchi],
+                it[Chemical.smiles]
             )
         }
         val matched = mol.map { currentMol ->
@@ -422,7 +423,7 @@ suspend fun checkMolecule(db: Database, client: HttpClient, mol: SourceMolecule)
             }
         }
         val matches = query.filterNotNull().take(1).map {
-            Molecule(it[Chemical.iupacName], CAS.fromString(it[Chemical.cas])!!, it[Chemical.inchiKey])
+            Molecule(it[Chemical.iupacName], CAS.fromString(it[Chemical.cas])!!, it[Chemical.inchiKey], it[Chemical.smiles])
         }.getOrElse(0) { ind ->
             logger.info("Checking CAS online")
             val mol = parsedCas?.let { moleculeFromCactus(it, client) }

@@ -9,6 +9,7 @@ import java.net.URI;
 import ch.ethz.sis.openbis.generic.asapi.v3.IApplicationServerApi
 import ch.systemsx.cisd.common.spring.HttpInvokerUtils
 import ch.ethz.sis.openbis.generic.asapi.v3.dto.sample.Sample
+import ch.ethz.sis.openbis.generic.asapi.v3.dto.sample.SampleType
 import ch.ethz.sis.openbis.generic.asapi.v3.dto.sample.fetchoptions.SampleFetchOptions
 import ch.ethz.sis.openbis.generic.asapi.v3.dto.sample.search.SampleSearchCriteria
 import cleaner.chemicals.SourceMolecule
@@ -28,7 +29,7 @@ import org.jetbrains.kotlinx.dataframe.api.toMap
 import org.jetbrains.kotlinx.dataframe.size
 import java.io.File
 
-
+val a = Sample()
 enum class CommandLineModes(val type: String) {
     OPENBIS("openbis"),
     FILE("file")
