@@ -7,4 +7,6 @@ import 'bootstrap-icons/font/bootstrap-icons.css'
 // import 'bootstrap-icons'
 
 console.log('App')
+// Load openbis V3 API
+
 const app = createApp(App).use(piniaInstance).use(router).mount('#app');

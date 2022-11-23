@@ -1,18 +1,35 @@
 <script setup lang="ts">
-import { ref, onBeforeMount, onMounted, onUpdated, onRenderTriggered, onBeforeUpdate, onActivated, getCurrentInstance, watch, computed, defineProps, PropType, withDefaults } from 'vue';
+import { propsToAttrMap } from '@vue/shared';
+import { ref, onBeforeMount, onMounted, onUpdated, onRenderTriggered, onBeforeUpdate, onActivated, getCurrentInstance, watch, computed, defineProps, PropType, withDefaults, reactive } from 'vue';
 import Paginate from 'vuejs-paginate-next'
 import { OpenbisCollection, OpenbisObject, OpenbisObjectType } from './utils'
 
-const props = defineProps<{ entries: OpenbisCollection | null, objectTypes: OpenbisObjectType[], size: number }>()
+const props = defineProps<{ entries: OpenbisCollection | null, objectTypes: OpenbisObjectType[], maxSize: number | null, size: number, title: String }>()
 const pageNumber = ref<number>(0);
+
+const selectedElement = ref<OpenbisObject>(null)
+const emit = defineEmits<{ 
+  (e: 'select', id: OpenbisObject): void,
+  (e: 'pageChanged', to: Number): void,
+  (e: 'sortChanged', field: String): void
+ }>()
+
+
+
+const samples = computed( () => props.entries?.samples)
 
 const pageCount = computed(
   () => {
-    const l = props?.entries?.samples?.length,
+    const l = samples.value?.length,
       s = props.size;
     return Math.ceil(l / s) ?? 1;
   }
 )
+
+function handleSelected(el: OpenbisObject) {
+  emit('select', el)
+  selectedElement.value = el
+}
 
 function nextPage() {
   pageNumber.value = pageNumber.value + 1
@@ -24,15 +41,20 @@ function prevPage() {
 
 function toPage(page: number) {
   pageNumber.value = page
+  emit('pageChanged', page)
+  
 }
 
 const paginatedEntries = computed(
   () => {
     const start = pageNumber.value * props.size;
     const end = start + props.size;
-    return props?.entries?.samples?.slice(start, end);
+    console.log(start,end)
+    //return samples?.slice(start, end);
+    return samples.value
   }
 )
+
 
 const allObjectProperties = computed(() => {
   const allProps = paginatedEntries?.value?.flatMap((sample) => {
@@ -49,33 +71,35 @@ const allObjectProperties = computed(() => {
 
 <template>
   <div>
-    <h2>Inventory</h2>
+    <h2>{{ props.title }}</h2>
     <div v-if="props.entries">
       <table class="table">
         <thead>
           <tr>
             <th>Extra</th>
             <th>Code</th>
-            <th v-for="prop in allObjectProperties">{{ prop }}</th>
+            <th v-for="prop in allObjectProperties">
+              {{ prop }}
+              <div @click="$emit('sortChanged', prop)"><i class="bi bi-sort-alpha-down"></i></div>
+            </th>
           </tr>
-
         </thead>
         <tbody>
-          <tr v-for="entry in paginatedEntries">
-            <!-- <th scope="row"></th> -->
+          <tr v-for="entry in paginatedEntries" @click="handleSelected(entry)"
+            :class="{ 'highlight': (entry == selectedElement) }">
             <td>
               <!-- This slot will be used to render the molecule-->
-              <slot :entry="entry"></slot>
+              <slot name="extra" :entry="entry"></slot>
             </td>
             <td>{{ entry.code }}</td>
             <td v-for="prop in entry.properties">{{ prop }}</td>
-          </tr> 
+          </tr>
         </tbody>
       </table>
     </div>
   </div>
 
-  <paginate :page-count="pageCount" :click-handler="toPage" :container-class="'pagination'" :page-class="'page-item'">
+  <paginate :page-count="maxSize ?? pageCount" :click-handler="toPage" :container-class="'pagination'" :page-class="'page-item'">
   </paginate>
 
 
@@ -107,23 +131,15 @@ ul.pagination li {
 
 
 
-/* .table thead {
-  display: flex;
-  flex-direction: column;
-}
-
-.table tr th {
-  font-weight: bold;
-  text-align: center;
-} */
-
-
 .table tbody tr {
   display: table-row;
   margin-bottom: 5px;
 
 }
 
+tbody .highlight {
+  background-color: lightgrey
+}
 
 .table tbody td {
   overflow: hidden;

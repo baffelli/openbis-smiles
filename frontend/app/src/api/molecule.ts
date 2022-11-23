@@ -23,7 +23,7 @@
 
     export async function  getPubchemId(identifier:string, inputRepresentation: validMoleculeIdentifiers): Promise<integer> {
         const endpoint = new URL(`${pubchemEndpoint}/${inputRepresentation}/${encodeURIComponent(identifier)}/cids/JSON`)
-        const req = new Request(endpoint);
+        const req = new Request(endpoint,  {mode: 'cors'});
         const response = await fetch(req);
         if (!response.ok){
             if (response.status==404){
@@ -41,7 +41,7 @@
         const params = new URLSearchParams()
         params.append('toc', 'LCSS TOC')
         params.append('heading', 'GHS Classification')
-        const req = new Request(endpoint + params.toString());
+        const req = new Request(endpoint + params.toString(), {mode: 'cors'});
         const response = await fetch(req);
         if (!response.ok){
             if (response.status==404){
@@ -51,7 +51,6 @@
             throw new Error(`Response status ${response.statusText}`)
         }
         const data = await response.json();
-        debugger;
 
     }
     export async function getMoleculeIdentifier(name:string): Promise<Molecule>{

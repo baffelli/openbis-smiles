@@ -8,7 +8,7 @@
 
     const {user, token, loggedIn} = storeToRefs(userStore)
     const password = ref('');
-    const enteredUser = ref('');
+    // When logged in, go to main page
     async function onSubmit(){
         await userStore.login(user.value, password.value)
         router.push('main')

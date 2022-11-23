@@ -6,7 +6,6 @@ import {MappedOpenbisObject, OpenbisObjectConfiguration, expandObject} from './u
 //import ChemDraw from './ChemDraw.vue';
 
 
-// const props = defineProps<{name: string, formula: string, smiles: string, cas:string}>();
 const emit = defineEmits<{(event: 'change'): string}>()
 const props = defineProps<{mol: MolInterface, config: OpenbisObjectConfiguration}>()
 
@@ -19,6 +18,7 @@ const molComp = computed( (): MappedOpenbisObject => expandObject(props.mol, pro
 
 <template>
 <form>
+    <h2>Molecule properties</h2>
     <fieldset v-for="(el, key, index) in molComp">
         <p>
                 <label :for="key">{{key}}</label>
@@ -30,27 +30,6 @@ const molComp = computed( (): MappedOpenbisObject => expandObject(props.mol, pro
 
 
         </p> 
-            <!-- <legend>Structure</legend>
-            <p>
-                <label for='chemical-name'>Chemical Formula</label>
-                <input id="chemical-name" name="Name" :v-model="name" @change="$emit('change:name', $event.target.value)"/>
-            </p>
-            <p>
-                <label for='chemical-formula'>Chemical Formula</label>
-                <input id="chemical-formula" name="Formula" :v-model="formula" @change="$emit('change:formula', $event.target.value)"/>
-            </p>
-            <p>
-                <label for='smiles-output'>SMILES</label>
-                <input name="SMILES" id="smiles-output"   :v-model="smiles" @change="$emit('change:smiles', $event.target.value)"/>
-            </p>
-            <p>
-                <label for='cas-number'>CAS Number</label>
-                <input name="CAS Number" id="cas-number"   :v-model="cas" @change="$emit('change:cas', $event.target.value)"/>
-            </p>
-            <p>
-                <label for='upload'>Upload CDXML</label>
-                <input type="file" id='upload' name='Upload cdxml'>
-            </p> -->
     </fieldset>
 </form>
 </template>

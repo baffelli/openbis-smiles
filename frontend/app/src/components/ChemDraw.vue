@@ -10,9 +10,9 @@ enum DrawMode {
 </script>
 <script setup lang="ts">
 
-import { ref, onBeforeMount, onMounted, onBeforeUpdate, onActivated, getCurrentInstance, watch, defineProps, PropType, withDefaults } from 'vue';
+import { ref, onBeforeMount, onMounted, onBeforeUpdate, onActivated, getCurrentInstance, watch, defineProps, PropType, withDefaults, computed } from 'vue';
 import { Molecule } from '@/store/molecule';
-import {StructureEditor,  } from 'openchemlib/full'
+import { StructureEditor, StructureView, Molecule as Mol } from 'openchemlib/full'
 
 
 interface Props {
@@ -22,7 +22,11 @@ interface Props {
     options?: string,
     mode?: DrawMode,
     molecule: Molecule | null,
+    show: boolean
 }
+
+
+
 
 
 const props = withDefaults(defineProps<Props>(), {
@@ -31,52 +35,49 @@ const props = withDefaults(defineProps<Props>(), {
     id: () => `molecule-${Math.ceil(Math.random() * 100)}`,
     mode: DrawMode.depict,
     options: "",
+    show: true
 })
 
 
 const emit = defineEmits<{ (event: 'structureChanged', smiles: string): string }>()
-console.log(props);
 // Attach script
 const mol = ref(props.molecule);
-// //const src = ref("../node_modules/jsme-editor/jsme.nocache.js");
-// const src = '../node_modules/kekule/dist/kekule.js'
-// const newScript = document.createElement("script");
-// newScript.setAttribute('src', src);
-// newScript.setAttribute('type', "module");
-// document.head.appendChild(newScript);
-
 const viewer = ref(null);
-const editor = ref<StructureEditor>(null)
+const moleculeEditor = ref<StructureEditor>(null)
+
+//Representation of molecule
+const molRep = computed(()=> Mol.fromSmiles(mol.value.smiles))
 
 onMounted(() => {
-    const ed = StructureEditor.createSVGEditor(props.id, 1)
-    ed.setSmiles(props.molecule.smiles);
-    editor.value = ed;
+        const ed = StructureEditor.createSVGEditor(props.id, 1);
+        ed.setSmiles(molRep.value.toSmiles());
+        moleculeEditor.value = ed;
+    
 })
 
 
 
 
-function populate(){
-    const newSmiles = editor.value.getSmiles();
+function populate() {
+    const newSmiles = moleculeEditor.value.getSmiles();
     emit('structureChanged', newSmiles);
 }
 
 
-function load(){
-    const newSmiles = editor.value.getSmiles();
+function load() {
+    const newSmiles = moleculeEditor.value.getSmiles();
     emit('structureChanged', newSmiles);
 }
 
-async function save(){
-    editor.value.getMolFileV3();
+async function save() {
+    moleculeEditor.value.getMolFileV3();
     const opts = {
-    types: [{
-      description: 'Text file',
-      accept: {'text/plain': ['.txt']},
-    }],
-  };
-  return await (<any>document).showSaveFilePicker(opts);
+        types: [{
+            description: 'Text file',
+            accept: { 'text/plain': ['.txt'] },
+        }],
+    };
+    return await (<any>document).showSaveFilePicker(opts);
 }
 
 
@@ -84,11 +85,29 @@ async function save(){
 
 <template>
     <div>
-        <legend>Molecule</legend>
-        <div :id="props.id" ref="viewer" :style="{width:width,height:height,display:'block','margin-left':'auto','margin-right':'auto'}" is-fragment="false"></div>
-        <button @click="populate"><i class="bi bi-save"></i> Generate from sketch</button>
-        <button @click="load">Load .mol</button>
-        <button class="btn"><i class="bi bi-download"></i> Download</button>
-
+        <h2>Molecule Sketcher</h2>
+        <div :id="props.id" ref="viewer"
+            :style="{width:width,height:height,display:'block','margin-left':'auto','margin-right':'auto'}"
+            is-fragment="false">
+            <button @click="populate"><i class="bi bi-save"></i> Generate from sketch</button>
+            <button @click="load">Load .mol</button>
+            <button class="btn"><i class="bi bi-download"></i> Download</button>
+        </div>
     </div>
 </template>
+
+<style>
+.modal-enter-from {
+    opacity: 0;
+}
+
+.modal-leave-to {
+    opacity: 0;
+}
+
+.modal-enter-from .modal-container,
+.modal-leave-to .modal-container {
+    -webkit-transform: scale(1.1);
+    transform: scale(1.1);
+}
+</style>

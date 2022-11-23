@@ -2,6 +2,7 @@ import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 
 import pluginRewriteAll from '@thirdroom/vite-plugin-rewrite-all';
+//For HTTPS
 import basicSsl from '@vitejs/plugin-basic-ssl';
 //Resolve @
 const path = require("path");
@@ -15,8 +16,16 @@ export default defineConfig({
     },
     server: {
         host: true,
+        cors: true,
         port: 5173,
         proxy: {
+            "//api/" :{
+                ws: true,
+                changeOrigin: true,
+                secure: false,
+                target: "https://openbis:443/openbis/resources/api/v3/",
+                rewrite: (path) => {console.log(path);  const newPath = path.replace(/^\/api/, ''); console.log(newPath); return newPath}
+            },
             '/openbis/': {
                 ws: true,
                 changeOrigin: true,
