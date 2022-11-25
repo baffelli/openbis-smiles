@@ -3,57 +3,47 @@ import Molecule from "./Molecule.vue"
 import { ref, onBeforeMount, onMounted, getCurrentInstance, watch, markRaw, toRef, computed } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useMolecule } from '@/store/molecule';
-import { OpenbisObjectConfiguration, expandObject, OpenbisCollection, OpenbsInstance, OpenbisObject } from './utils'
+import { OpenbisObjectConfiguration, expandObject, reverseMapping, OpenbisCollection, OpenbsInstance, OpenbisObject } from './utils'
 import ChemDraw from './ChemDraw.vue';
 import { useOpenbis } from "@/store/openbis";
 import ListView from './ListView.vue';
+import ListItemActions from "./ListItemActions.vue";
 import MoleculeIcon from "./MoleculeIcon.vue";
+import { Molecule as MoleculeType } from "@/store/molecule"
 
 const molStore = useMolecule();
-const mol = storeToRefs(molStore)
+const { molecule } = storeToRefs(molStore)
 
 const openbis = useOpenbis();
 await openbis.populate();
 const { instance, currentCollection } = storeToRefs(openbis)
 
+
+
 const allColls = openbis.getAllCollections()
 const selectedCollection = ref<string>(null);
 const selectedMolecule = ref<OpenbisObject>(null);
+const selectedProduct = ref<OpenbisObject>(null);
 
 const pageSize = 10;
+
+
+const collectionSize = computed(() => openbis.collectionSize);
+const editMolecule = ref<boolean>(false)
 
 // Mapp store to form properties
 const molConfig = {
     openbisType: 'MOLECULE',
     prefix: 'MOL',
-    properties: [
-        { commonName: 'iupacName', openbisPropertyName: 'MOLECULE.IUPAC_NAME', dataType: 'string' },
-        { commonName: 'cas', openbisPropertyName: 'MOLECULE.CAS', dataType: 'string' },
-        { commonName: 'inChi', openbisPropertyName: 'MOLECULE.INCHI', dataType: 'string' },
-        { commonName: 'smiles', openbisPropertyName: 'MOLECULE.SMILES', dataType: 'string' }
-    ]
+    properties:
+    {
+        "iupacName": { commonName: 'iupacName', openbisPropertyName: 'MOLECULE.IUPAC_NAME', dataType: 'string' },
+        "cas": { commonName: 'cas', openbisPropertyName: 'MOLECULE.CAS', dataType: 'string' },
+        "inChi": { commonName: 'inChi', openbisPropertyName: 'MOLECULE.INCHI', dataType: 'string' },
+        "smiles": { commonName: 'smiles', openbisPropertyName: 'MOLECULE.SMILES', dataType: 'string' }
 
-} as OpenbisObjectConfiguration
-
-
-const drawMode = ref(true);
-const collectionSize = ref(100);
-
-
-//Get collection of molecules
-// const molCollection = computed(
-//     () => {
-//         const samples = currentCollection.value.samples
-//         // const res = samples.filter((it) => {
-//         //     console.log(it.code)
-//         //     it.code.startsWith("MOL")
-//         // })
-//         // console.log("result")
-//         // console.log(res)
-//         debugger
-//         return currentCollection.value
-//     }
-// )
+    }
+} as OpenbisObjectConfiguration<MoleculeType>
 
 
 
@@ -61,10 +51,11 @@ const collectionSize = ref(100);
 
 // Handle change of any property
 
-async function handleChange(prop: string, val: object) {
-    if (['smiles', 'cas', 'name', 'iupacName', 'formula'].includes(prop)) {
+async function handleChange(prop: string, val: string) {
+    if (Object.keys(molConfig.properties).includes(prop)) {
         await molStore.populate(val, val);
-        //console.log(mol);
+        const props = reverseMapping(molecule.value, molConfig)
+        selectedMolecule.value.properties = props
     }
 }
 
@@ -78,25 +69,28 @@ async function handleChangedStructure(smiles: string) {
 }
 
 async function onCollectionChange(coll: string) {
-    await openbis.getCollection(coll, molConfig.prefix, pageSize)
+    await openbis.getCollection(coll, molConfig.openbisType, pageSize)
     console.log(currentCollection.value)
 }
 
 
-function selectMolecule(selected: OpenbisObject){
+function selectMolecule(selected: OpenbisObject) {
     console.log(selected)
     selectedMolecule.value = selected
 }
 
+function selectProduct(selected: OpenbisObject) {
+    selectedProduct.value = selected
+}
 
 //Handle page change
-async function changePage(page: number){
+async function changePage(page: number) {
     console.log("page change")
     await openbis.toPage(page)
 }
 
 //Handle sorting
-async function sortChanged(fields: string){
+async function sortChanged(fields: string) {
     await openbis.sortCollection([fields])
 }
 
@@ -108,52 +102,76 @@ const molCollection = computed(
 )
 
 const childrenCollection = computed(
-    () =>
-    {
-        return {samples: selectedMolecule?.value?.children} as OpenbisCollection
+    () => {
+        return { samples: selectedMolecule?.value?.children } as OpenbisCollection
     }
 )
 
+
+async function handleDeleteEntry(item: OpenbisObject) {
+    console.log("Editign")
+
+    console.log(item)
+}
+
+
+async function handleEditEntry(item: OpenbisObject) {
+    console.log(`Editign ${item}`)
+    editMolecule.value = true
+}
+
+async function handleSaveMolecule() {
+    editMolecule.value = false
+}
+
+function handleAddEntry() {
+    selectedMolecule.value = {} as OpenbisObject
+    editMolecule.value = true
+}
 
 </script>
 
 <template>
     <h1>openBIS Chemicals Manager</h1>
+    Select a collection
+    <select v-model="selectedCollection" @change="onCollectionChange(selectedCollection)">
+        <option disabled value="">Please select collection to display</option>
+        <option v-for="coll in allColls">{{ coll.identifier.identifier }}</option>
+    </select>
     <div class="container">
 
         <div class="Collection grid-line">
-            Select a collection
-            <select v-model="selectedCollection" @change="onCollectionChange(selectedCollection)">
-                <option disabled value="">Please select collection to display</option>
-                <option v-for="coll in allColls">{{ coll.identifier.identifier }}</option>
-            </select>
             <div>
-                <ListView :entries="molCollection" :object-types="openbis?.instance.objectTypes" :size=10 :max-size="collectionSize" :title="'Molecules'" @select="selectMolecule" @page-changed="changePage" @sort-changed="sortChanged">
-                    <template
-                        #extra="entry">
+                <button @click="handleAddEntry"><i class="bi bi-plus-square"> </i>Add entry</button>
+                <ListView :entries="molCollection" :object-types="openbis?.instance.objectTypes" :size=10
+                    :max-size="collectionSize" :title="'Molecules'" @select="selectMolecule" @page-changed="changePage"
+                    @sort-changed="sortChanged">
+                    <template #extra="entry">
                         <MoleculeIcon :entry="entry.entry" :config="molConfig"></MoleculeIcon>
+                    </template>
+                    <template #actions=entry>
+                        <ListItemActions :item="entry.entry" @edit="handleEditEntry">
+                        </ListItemActions>
                     </template>
                 </ListView>
             </div>
         </div>
         <div class="Products grid-line">
-            <ListView :entries="childrenCollection" :object-types="openbis?.instance.objectTypes" :size=5 :max-size=100 :title="`Products for ${selectedMolecule?.code}`">
+            <ListView :entries="childrenCollection" :object-types="openbis?.instance.objectTypes" :size=5
+                :max-size=childrenCollection.totalCount :title="`Products for ${selectedMolecule?.code}`"
+                @select="selectProduct">
                 <h1>Title</h1>
+                <template #actions=entry>
+                    <ListItemActions :item="entry.entry" @edit="handleEditEntry">
+                    </ListItemActions>
+                </template>
             </ListView>
         </div>
-        <div class="Molecule grid-line">
-            <!-- <div>
-                <Molecule :mol="mol" :config="molConfig" @change="handleChange"></Molecule>
-            </div> -->
-            <button>Save to openBIS</button>
+        <div>
+            <Molecule :mol="selectedMolecule" :config="molConfig" @change="handleChange" @save="handleSaveMolecule"
+                :edit="editMolecule"></Molecule>
         </div>
-        <!-- <div class="Sketch grid-line">
-            <div>
-                <ChemDraw width="500px" height="500px" :molecule="mol" :show="drawMode"
-                    @structure-changed="handleChangedStructure">
-                </ChemDraw>
-            </div>
-        </div> -->
+
     </div>
 
 

@@ -1,23 +1,21 @@
 import { defineStore } from 'pinia'
 import * as Mol from '../api/molecule';
 
-
+export interface Product{
+    name: String
+    cas: String
+    articleNumber: String
+    quantity: String
+    purity: String
+    location: String
+    supplier: String
+}
 
 export interface Molecule {
-    name: string,
     iupacName: string,
-    id: string,
-    sid: number | null,
     cas: string,
-    jme: string,
-    formula: string,
-    smiles: string,
-    hazardous: boolean | null,
-    hazardouseSpec: string[] | null,
-    supplier: string | null,
-    synthBy: string | null,
-    comments: string | null,
-    receivingDate: Date | null
+    inChi: string,
+    smiles: string | null
 }
 
 interface Getters {}
@@ -34,43 +32,36 @@ const identifierMapper = {
     cas: 'cas'
 }
 
-export const useMolecule = defineStore<string, Molecule,  Getters, Actions>(
+export interface State{
+    molecule: Molecule
+}
+
+
+export const useMolecule = defineStore<string, State,  Getters, Actions>(
     "molecule",
     {
-        state: (): Molecule => {
-            return {
+        state: (): State => {
+            return {molecule:{
                 name: '',
-                sid: null,
                 iupacName: '',
-                id: '',
                 cas: '',
-                formula: '',
-                smiles: '',
-                jme: '',
-                hazardous: false,
-                hazardouseSpec: [''],
-                supplier: '',
-                synthBy: '',
-                comments: '',
-                receivingDate: null
-            } as Molecule
+                inChi: '',
+                smiles: ''
+            } as Molecule} as State
         },
         actions:
         {
             async populate(name: string, type: string){
-                // const val = await Mol.getStructure(name, type)
-                // const lcss = await Mol.pubChemLCSS(val)
-                // this.cid = val;
-                // debugger
                 const val = await Mol.getMoleculeIdentifier(name)
                 if (type !== "name"){
                     this.name = this.name;
                 }
-                this.iupacName = val.iupacName;
-                this.cas = val.cas;
-                this.smiles = val.smiles;
-                this.formula = val.formula;
-                this.jme = val.jme; 
+                const mol = {
+                    iupacName : val.iupacName,
+                    cas: val.cas,
+                    smiles: val.smiles
+                }
+                this.molecule = mol 
             },
             async generateFromIdentifier(identifier: string, type: string){
                 const iupacName = await Mol.getStructure(identifier, 'iupac_name')

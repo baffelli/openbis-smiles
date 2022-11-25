@@ -17,11 +17,13 @@ const emit = defineEmits<{
 
 
 const samples = computed( () => props.entries?.samples)
+const size = computed( () => props.size )
+
 
 const pageCount = computed(
   () => {
-    const l = samples.value?.length,
-      s = props.size;
+    const l = props.maxSize
+    const s = size.value
     return Math.ceil(l / s) ?? 1;
   }
 )
@@ -47,11 +49,9 @@ function toPage(page: number) {
 
 const paginatedEntries = computed(
   () => {
-    const start = pageNumber.value * props.size;
-    const end = start + props.size;
-    console.log(start,end)
-    //return samples?.slice(start, end);
-    return samples.value
+    const start = pageNumber.value * size.value;
+    const end = start + size.value;
+    return samples.value;
   }
 )
 
@@ -90,16 +90,21 @@ const allObjectProperties = computed(() => {
             <td>
               <!-- This slot will be used to render the molecule-->
               <slot name="extra" :entry="entry"></slot>
+            
             </td>
             <td>{{ entry.code }}</td>
             <td v-for="prop in entry.properties">{{ prop }}</td>
+            <td @click.prevent>
+              <slot name="actions" :entry="entry"></slot>
+            </td>
+           
           </tr>
         </tbody>
       </table>
     </div>
   </div>
 
-  <paginate :page-count="maxSize ?? pageCount" :click-handler="toPage" :container-class="'pagination'" :page-class="'page-item'">
+  <paginate :page-count="pageCount" :click-handler="toPage" :container-class="'pagination'" :page-class="'page-item'">
   </paginate>
 
 

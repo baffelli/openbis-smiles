@@ -11,13 +11,27 @@ services:
     volumes:      
     #Openbis state
       - openbis-state:/home/openbis/openbis_state/
+      - ./openbis/service.properties:/home/openbis/openbis_state/as_etc/service.properties
     ports:
-      - 8443:443
+      - 8445:443
     hostname: openbis
+    healthcheck:
+      test: ["CMD", "curl", "openbis:443"]
+      interval: 1m30s
+      timeout: 30s
+      retries: 5
+      start_period: 30s
+  openbis-intialiser:
+    depends_on:
+      openbis:
+        condition: service_healthy
+    build: ./configurator
+    volumes:
+      - ./configurator/instance.json:/usr/src/app/instance.json
   app:
     build: ./frontend/
     volumes:
       - ./frontend/app:/usr/app
     ports:
-      - 8080:5173
-      - 8081:4173
+      - 8081:5173
+      - 8082:4173

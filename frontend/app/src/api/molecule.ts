@@ -2,7 +2,7 @@
     import { Molecule } from "@/store/molecule";
 
 
-    export type validMoleculeIdentifiers = 'smiles' | 'iupac_name' | 'formula' | 'stdinchikey' | 'cas' | 'uuuuu' | 'name' | 'cid'
+    export type validMoleculeIdentifiers = 'smiles' | 'iupac_name' | 'formula' | 'stdinchikey' | 'cas' | 'uuuuu' | 'name' | 'cid' | 'inchi'
 
     export async function getStructure(name: string, outputRepresentation: validMoleculeIdentifiers): Promise<string>{
         const reqBase = new URL(`https://cactus.nci.nih.gov:443/chemical/structure/${encodeURI(name)}/${outputRepresentation}`);
@@ -57,11 +57,13 @@
         const iupac_name = await getStructure(name, 'iupac_name');
         const smiles = await getStructure(name, 'smiles');
         const formula = await getStructure(name, 'formula');
-        const cas = await getStructure(name, 'CAS');
+        const cas = await getStructure(name, "cas");
         // Get mol file 
         const jme = await getStructure(name, 'file?format=mol');
+        const inchi = await getStructure(name, 'inchi');
         return {
             iupacName: iupac_name,
+            inChi: inchi,
             smiles: smiles,
             formula: formula,
             cas: cas,

@@ -16,10 +16,15 @@
         "@fortawesome/free-brands-svg-icons": "^6.2.0",
         "@fortawesome/free-regular-svg-icons": "^6.2.0",
         "@fortawesome/free-solid-svg-icons": "^6.2.0",
+        "jackson-js": "^1.1.0",
         "jquery": "^3.6.1",
+        "jsog": "^1.0.7",
+        "jsog-typescript": "^1.0.0-1",
         "pinia": "^2.0.21",
         "vue": "^3.2.38",
-        "vue-router": "^4.1.5"
+        "vue-final-modal": "^3.4.11",
+        "vue-router": "^4.1.5",
+        "vuejs-paginate-next": "^1.0.2"
     },
     "devDependencies": {
         "@deltablot/chemdoodle-web-mini": "^9.2.6",

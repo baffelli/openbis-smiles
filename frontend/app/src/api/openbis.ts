@@ -1,22 +1,22 @@
 
-import { OpenbisCollection, OpenbisTree, OpenbisResponse, OpenbisObjectType, JSONRPCRequest, ObjectFetchOptions, PersonFetchOptions, ExperimentFetchOptions, JSONRPCResponse, OpenbisSpace, OpenbisListResponse, parseOpenbisResponse, ObjectSortOptions, sortByField} from "@/components/utils";
+import * as openbisRequests from "@/components/utils";
 import { faAngleDoubleRight } from "@fortawesome/free-solid-svg-icons";
 import { JsonTypeId } from "jackson-js";
-import {JsogService} from "jsog-typescript"
+import { JsogService } from "jsog-typescript"
 import { describe } from "node:test";
 import { setMapStoreSuffix } from "pinia";
 
 
 const jsog = new JsogService();
 
-export function prepareRequest(method: string, params: any[]): JSONRPCRequest {
+export function prepareRequest(method: string, params: any[]): openbisRequests.JSONRPCRequest {
     return {
         method: method,
         params: params,
         id: "1",
         jsonrpc: "2.0"
 
-    } as JSONRPCRequest
+    } as openbisRequests.JSONRPCRequest
 }
 
 
@@ -41,18 +41,19 @@ export function openbisRequest(method: string, params: any[], token?: string): R
 export async function handleRequest<T>(req: RequestInfo): Promise<T> {
     const response = await fetch(req);
     if (response.ok) {
-        const body = jsog.deserialize(await response?.json()) as JSONRPCResponse<T>
-        return body.result as T   
+        const body = jsog.deserialize(await response?.json()) as openbisRequests.JSONRPCResponse<T>
+        return body.result as T
     } else {
         throw new Error(`Error: ${response.status}`);
     }
 }
 
-export async function handleOpenbisResponse<T>(req: RequestInfo): Promise<T>{
-    const data = parseOpenbisResponse<T>(await handleRequest<OpenbisResponse<T>>(req))
-    switch(data.kind){
-        case "listResponse" : {return data.objects as T}
-        case "singleResponse": {return data as T}
+export async function handleOpenbisResponse<T>(req: RequestInfo): Promise<T> {
+    const data = openbisRequests.parseOpenbisResponse<T>(await handleRequest<openbisRequests.OpenbisRawResponse<T>>(req))
+    switch (data.kind) {
+        case "searchResponse": {return {...data} as T}
+        case "listResponse": { return data.objects as T }
+        case "singleResponse": { return data as T }
     }
 }
 
@@ -69,7 +70,7 @@ export async function checkToken(token: string): Promise<boolean> {
     return valid
 }
 
-export async function getTree(token: string, getSamples: Boolean = false): Promise<OpenbisTree> {
+export async function getTree(token: string, getSamples: Boolean = false): Promise<openbisRequests.OpenbisTree> {
     const body =
         [
             {
@@ -80,21 +81,22 @@ export async function getTree(token: string, getSamples: Boolean = false): Promi
             },
             {
                 "@id": 0,
-                "registrator": new PersonFetchOptions(),
+                "registrator": new openbisRequests.PersonFetchOptions(),
                 "@type": "as.dto.space.fetchoptions.SpaceFetchOptions",
                 "projects": {
                     "@type": "as.dto.project.fetchoptions.ProjectFetchOptions",
-                    "experiments": new ExperimentFetchOptions(true, getSamples ? new ObjectFetchOptions(false, false, false) : null)
+                    "experiments": new openbisRequests.ExperimentFetchOptions(true, getSamples ? new openbisRequests.ObjectFetchOptions(false, false, false) : null)
                 },
                 "sort": null
             }
         ]
     const req = openbisRequest('searchSpaces', body, token)
-    const data = await handleOpenbisResponse<OpenbisSpace[]>(req);
-    
-    const result =   {
-            spaces: data
-        } as OpenbisTree
+
+    const data = await handleOpenbisResponse<openbisRequests.OpenbisSearchResponse<openbisRequests.OpenbisSpace>>(req);
+
+    const result = {
+        spaces: data.objects
+    } as openbisRequests.OpenbisTree
     return result
 
 }
@@ -102,15 +104,15 @@ export async function getTree(token: string, getSamples: Boolean = false): Promi
 export async function getCollections(token: string): Promise<object> {
     const reqData = [
         { "@id": 0, "criteria": [], "operator": "AND", "@type": "as.dto.experiment.search.ExperimentSearchCriteria" },
-        new ExperimentFetchOptions(false, new ObjectFetchOptions(false, false, null, null))
+        new openbisRequests.ExperimentFetchOptions(false, new openbisRequests.ObjectFetchOptions(false, false, null, null))
     ]
     const req = openbisRequest('searchExperiments', reqData, token)
-    const data = await handleOpenbisResponse<OpenbisCollection[]>(req);
-    return data
+    const data = await handleOpenbisResponse<openbisRequests.OpenbisSearchResponse<openbisRequests.OpenbisCollection>>(req);
+    return data.objects
 
 }
 
-export async function getObjectTypes(token: string): Promise<OpenbisObjectType[]> {
+export async function getObjectTypes(token: string): Promise<openbisRequests.OpenbisObjectType[]> {
     const reqData = [
         {
             "@id": 0,
@@ -131,30 +133,21 @@ export async function getObjectTypes(token: string): Promise<OpenbisObjectType[]
         }
     ];
     const req = openbisRequest('searchSampleTypes', reqData, token);
-    const types = await handleOpenbisResponse<OpenbisObjectType[]>(req);
-    return types
+    const types = await handleOpenbisResponse<openbisRequests.OpenbisSearchResponse<openbisRequests.OpenbisObjectType>>(req);
+    return types.objects
 }
 
 
-export async function getCollection(token: string, identifier: string, withType: string | null = null, withObjects: boolean = false, startPage: number | null = null, count: number | null, sortBy: string[] | null): Promise<OpenbisCollection> {
+export async function getCollection(token: string, identifier: string, withType: string | null = null, withObjects: boolean = false, startPage: number | null = null, count: number | null, sortBy: string[] | null): Promise<openbisRequests.OpenbisCollection> {
     const reqData = [
-        {
-            identifier: identifier,
-            "@type": "as.dto.experiment.id.ExperimentIdentifier"
-        },
-       new ExperimentFetchOptions(true, new ObjectFetchOptions(true, true, true, startPage, count, withType, sortBy ? new ObjectSortOptions(sortByField(sortBy)) : null), startPage, count)
+        new openbisRequests.SampleSearchCriteria().and(new openbisRequests.ExperimentSearchCriteria().withIdentifier(identifier)).withType(withType),
+        new openbisRequests.ObjectFetchOptions(true, true, true, startPage, count, withType, sortBy ? new openbisRequests.ObjectSortOptions(openbisRequests.sortByField(sortBy)) : null)
     ]
-    const req = openbisRequest('getExperiments', reqData, token)
-    
+    const req = openbisRequest('searchSamples', reqData, token)
+
     const text = await new Response(req.body).text();
     //console.log(text)
-    const data = await handleOpenbisResponse<OpenbisCollection>(req);
-    const newData = data[identifier] as OpenbisCollection
-    if(withType){
-        const newSamples = (data[identifier] as OpenbisCollection ).samples.filter((it) => (it.code.includes(withType)))
-        newData.samples = newSamples
-    }else{
-        1
-    }
+    const data = await handleOpenbisResponse<openbisRequests.OpenbisSearchResponse<openbisRequests.OpenbisObject>>(req);
+    const newData = {identifier: {identifier: identifier} as openbisRequests.Identifier, samples: data.objects, totalCount: data.totalCount} as openbisRequests.OpenbisCollection
     return newData
 }
