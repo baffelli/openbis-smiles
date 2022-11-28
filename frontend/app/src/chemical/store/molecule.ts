@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import * as Mol from '../../api/molecule';
+import * as Mol from '../service/molecule';
 
 export interface Product{
     name: String
