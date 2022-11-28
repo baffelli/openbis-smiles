@@ -1,6 +1,6 @@
 import App from './app/components/App.vue'
 import {createApp, markRaw } from 'vue'
-import piniaInstance from './store/store'
+import piniaInstance from './app/helpers/store'
 import {router} from "./app/router/router"
 import 'bootstrap-icons/font/bootstrap-icons.css'
 
