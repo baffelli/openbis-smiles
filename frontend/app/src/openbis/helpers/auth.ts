@@ -1,5 +1,5 @@
-import { useUser } from "../openbis/store/login";
-import * as Openbis from '../openbis/service/openbis' 
+import { useUser } from "../store/login";
+import * as Openbis from '../service/openbis' 
 const userStore = useUser()
 
 

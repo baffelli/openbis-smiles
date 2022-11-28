@@ -3,7 +3,7 @@ import { defineStore } from 'pinia'
 import * as Openbis from '../service/openbis';
 import * as Interfaces from '../model/utils';
 
-import { getToken } from '../../store/auth'
+import { getToken } from '../helpers/auth'
 
 interface Getters { }
 
