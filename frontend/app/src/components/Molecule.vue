@@ -2,7 +2,7 @@
 import { ref, onBeforeMount, onMounted, getCurrentInstance, watch, defineProps, defineEmits, computed } from 'vue';
 import { storeToRefs } from 'pinia';
 import { Molecule as MolInterface, useMolecule } from '@/store/molecule';
-import { MappedOpenbisObject, OpenbisObjectConfiguration, expandObject, OpenbisObject, InChI } from './utils';
+import { MappedOpenbisObject, OpenbisObjectConfiguration, expandObject, OpenbisObject, InChI } from '../openbis/model/utils.jsbis/model/utils';
 import { VueFinalModal } from "vue-final-modal"
 
 

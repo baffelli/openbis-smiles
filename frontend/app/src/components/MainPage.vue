@@ -3,7 +3,7 @@ import Molecule from "./Molecule.vue"
 import { ref, onBeforeMount, onMounted, getCurrentInstance, watch, markRaw, toRef, computed } from 'vue';
 import { storeToRefs, Store } from 'pinia';
 import { useMolecule } from '@/store/molecule';
-import { OpenbisObjectConfiguration, expandObject, reverseMapping, OpenbisCollection, OpenbsInstance, OpenbisObject } from './utils'
+import { OpenbisObjectConfiguration, expandObject, reverseMapping, OpenbisCollection, OpenbsInstance, OpenbisObject } from '../openbis/model/utils.jsbis/model/utils'
 import ChemDraw from './ChemDraw.vue';
 import { useOpenbis } from "@/openbis/store/openbis";
 import ListView from './ListView.vue';

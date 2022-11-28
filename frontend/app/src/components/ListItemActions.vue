@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onBeforeMount, onMounted, onUpdated, onRenderTriggered, onBeforeUpdate, onActivated, getCurrentInstance, watch, computed, defineProps, PropType, withDefaults, reactive } from 'vue';
-import { OpenbisEntity } from './utils';
+import { OpenbisEntity } from '../openbis/model/utils.jsbis/model/utils';
 const props = defineProps<{ item: OpenbisEntity | null}>()
 const emit = defineEmits<{ 
   (e: 'delete', id: OpenbisEntity): void,

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onBeforeMount, onMounted, onBeforeUpdate, onActivated, getCurrentInstance, watch, defineProps, PropType, withDefaults } from 'vue';
 
-import { OpenbisTree } from './utils'
+import { OpenbisTree } from '../openbis/model/utils.jsbis/model/utils'
 
 defineProps<{ entries: OpenbisTree }>()
 

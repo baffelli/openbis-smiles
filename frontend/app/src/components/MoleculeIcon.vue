@@ -2,7 +2,7 @@
 import { Molecule } from '@/store/molecule';
 import { StructureEditor, StructureView, Molecule as Mol } from 'openchemlib/full'
 import { ref, onMounted, onUpdated, computed,onRenderTriggered } from 'vue';
-import { expandObject, OpenbisObject, OpenbisObjectConfiguration } from './utils';
+import { expandObject, OpenbisObject, OpenbisObjectConfiguration } from '../openbis/model/utils.jsbis/model/utils';
 
 const props = defineProps<{ entry: OpenbisObject, config: OpenbisObjectConfiguration<Molecule> }>()
 const mol = computed(() => expandObject(props.entry, props.config) as Molecule)

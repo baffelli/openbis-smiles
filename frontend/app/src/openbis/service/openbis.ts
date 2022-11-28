@@ -1,5 +1,5 @@
 
-import * as openbisRequests from "@/components/utils";
+import * as openbisRequests from "@/openbis/model/utils";
 import { faAngleDoubleRight } from "@fortawesome/free-solid-svg-icons";
 import { JsonTypeId } from "jackson-js";
 import { JsogService } from "jsog-typescript"

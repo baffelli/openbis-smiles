@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 
-import * as Openbis from '../../api/openbis';
-import * as Interfaces from '../../components/utils';
+import * as Openbis from '../service/openbis';
+import * as Interfaces from '../model/utils';
 
 import { getToken } from '../../store/auth'
 
