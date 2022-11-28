@@ -1,4 +1,3 @@
-import { stringify } from "querystring";
 
 export type validDataTypes = 'string' | 'boolean' | 'number' | 'object' | 'date';
 
@@ -246,21 +245,6 @@ export function reverseMapping<T>(data: T, config: OpenbisObjectConfiguration<T>
 type SortOptionsLiterals = "as.dto.sample.fetchoptions.SampleSortOptions" | "as.dto.experiment.fetchoptions.ExperimentSortOptions" | "as.dto.space.fetchoptions.SpaceSortOptions" | "as.dto.property.fetchoptions.PropertyFetchOptions" | "as.dto.sample.fetchoptions.SampleTypeFetchOptions"
 
 
-// type SortOptionTypes<T extends OpenbisEntity> = 
-//     T extends OpenbisObject ? "as.dto.sample.fetchoptions.SampleSortOptions" :
-//     T extends OpenbisCollection ? "as.dto.experiment.fetchoptions.ExperimentSortOptions" :
-//     T extends OpenbisPropertyType ? "as.dto.property.fetchoptions.PropertyFetchOptions" :
-//     T extends OpenbisObjectType ? "as.dto.sample.fetchoptions.SampleTypeFetchOptions" :
-//     T extends OpenbisSpace ? "as.dto.space.fetchoptions.SpaceSortOptions" :
-//     never
-
-
-
-
-// function getSortOptionsType<T extends OpenbisEntity>(val: SortOptionsLiterals): SortOptionsLiterals{
-//     type t1 = SortOptionTypes<T> 
-//     return val as t1
-// }
 
 export class SortOrder {
     "@type": string

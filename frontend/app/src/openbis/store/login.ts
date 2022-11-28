@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
-import * as Openbis from '../openbis/service/openbis'
-import * as Mol from '../api/molecule'
+import * as Openbis from '../service/openbis'
+import * as Mol from '../../api/molecule'
 
 interface LoginData {
     user: string | null,

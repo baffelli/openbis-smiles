@@ -6,7 +6,7 @@
 
 <script setup lang="ts">
 import { onBeforeMount } from 'vue';
-import { useUser } from '../../store/login';
+import { useUser } from '../../openbis/store/login.jsre/login';
 import { router } from '../router/router.js';
 
 
