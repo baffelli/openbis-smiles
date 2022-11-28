@@ -4,10 +4,10 @@ import { storeToRefs } from 'pinia';
 
 const routes: Array<RouteRecordRaw> = [
     { 
-        path: '/main', name: "main",  component: () => import('../components/MainPage.vue'),  meta: { requiresAuth: true}
+        path: '/main', name: "main",  component: () => import('@/components/MainPage.vue'),  meta: { requiresAuth: true}
     },
     {
-        path: '/login', name: "login", component:  () => import('../components/Login.vue'), meta: { requiresAuth: false}
+        path: '/login', name: "login", component:  () => import('@/components/Login.vue'), meta: { requiresAuth: false}
     },
 ]
   

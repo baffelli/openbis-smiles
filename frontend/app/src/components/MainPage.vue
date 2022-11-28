@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import Molecule from "./Molecule.vue"
 import { ref, onBeforeMount, onMounted, getCurrentInstance, watch, markRaw, toRef, computed } from 'vue';
-import { storeToRefs } from 'pinia';
+import { storeToRefs, Store } from 'pinia';
 import { useMolecule } from '@/store/molecule';
 import { OpenbisObjectConfiguration, expandObject, reverseMapping, OpenbisCollection, OpenbsInstance, OpenbisObject } from './utils'
 import ChemDraw from './ChemDraw.vue';
@@ -10,18 +10,34 @@ import ListView from './ListView.vue';
 import ListItemActions from "./ListItemActions.vue";
 import MoleculeIcon from "./MoleculeIcon.vue";
 import { Molecule as MoleculeType } from "@/store/molecule"
+import { collectionCreator } from "@/store/collection"
+
 
 const molStore = useMolecule();
 const { molecule } = storeToRefs(molStore)
 
 const openbis = useOpenbis();
 await openbis.populate();
-const { instance, currentCollection } = storeToRefs(openbis)
+
+
+
+
+const { instance } = storeToRefs(openbis)
 
 
 
 const allColls = openbis.getAllCollections()
-const selectedCollection = ref<string>(null);
+
+//Initialise stores for collection
+
+const moleculeStore = collectionCreator.collectionStore("molecule")
+const productStore = collectionCreator.collectionStore("product")
+const { currentCollection: moleculeCollection, collectionSize: moleculeCollectionSize } = storeToRefs(moleculeStore)
+const { currentCollection: productCollection, collectionSize: productCollectionSize } = storeToRefs(productStore)
+
+
+
+
 const selectedMolecule = ref<OpenbisObject>(null);
 const selectedProduct = ref<OpenbisObject>(null);
 
@@ -68,9 +84,8 @@ async function handleChangedStructure(smiles: string) {
     }
 }
 
-async function onCollectionChange(coll: string) {
+async function onCollectionChange(store: Store, coll: string) {
     await openbis.getCollection(coll, molConfig.openbisType, pageSize)
-    console.log(currentCollection.value)
 }
 
 
@@ -96,10 +111,16 @@ async function sortChanged(fields: string) {
 
 const molCollection = computed(
     () => {
-        console.log(currentCollection.value)
-        return currentCollection.value
+        return moleculeCollection?.value
     }
 )
+
+const prodCollection = computed(
+    () => {
+        return productCollection?.value
+    }
+)
+
 
 const childrenCollection = computed(
     () => {
@@ -133,19 +154,32 @@ function handleAddEntry() {
 
 <template>
     <h1>openBIS Chemicals Manager</h1>
-    Select a collection
-    <select v-model="selectedCollection" @change="onCollectionChange(selectedCollection)">
-        <option disabled value="">Please select collection to display</option>
-        <option v-for="coll in allColls">{{ coll.identifier.identifier }}</option>
-    </select>
+    <div>
+        Select a collection for molecules
+        <select v-model="moleculeCollection"
+            @change="onCollectionChange('molecule', moleculeCollection.identifier.identifier)">
+            <option disabled value="">Please select collection to display molecules from</option>
+            <option v-for="coll in allColls">{{ coll.identifier.identifier }}</option>
+        </select>
+    </div>
+    <div>
+        Select a collection for products
+        <select v-model="productCollection"
+            @change="onCollectionChange('product', productCollection.identifier.identifier)">
+            <option disabled value="">Please select collection to display molecules from</option>
+            <option v-for="coll in allColls">{{ coll.identifier.identifier }}</option>
+        </select>
+    </div>
+
+
     <div class="container">
 
         <div class="Collection grid-line">
             <div>
                 <button @click="handleAddEntry"><i class="bi bi-plus-square"> </i>Add entry</button>
                 <ListView :entries="molCollection" :object-types="openbis?.instance.objectTypes" :size=10
-                    :max-size="collectionSize" :title="'Molecules'" @select="selectMolecule" @page-changed="changePage"
-                    @sort-changed="sortChanged">
+                    :max-size="moleculeCollectionSize" :title="'Molecules'" @select="selectMolecule"
+                    @page-changed="changePage" @sort-changed="sortChanged">
                     <template #extra="entry">
                         <MoleculeIcon :entry="entry.entry" :config="molConfig"></MoleculeIcon>
                     </template>
@@ -158,8 +192,7 @@ function handleAddEntry() {
         </div>
         <div class="Products grid-line">
             <ListView :entries="childrenCollection" :object-types="openbis?.instance.objectTypes" :size=5
-                :max-size=childrenCollection.totalCount :title="`Products for ${selectedMolecule?.code}`"
-                @select="selectProduct">
+                :max-size=childrenCollection.totalCount :title="'Products'" @select="selectProduct">
                 <h1>Title</h1>
                 <template #actions=entry>
                     <ListItemActions :item="entry.entry" @edit="handleEditEntry">
