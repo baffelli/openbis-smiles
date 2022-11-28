@@ -2,7 +2,7 @@
 import { propsToAttrMap } from '@vue/shared';
 import { ref, onBeforeMount, onMounted, onUpdated, onRenderTriggered, onBeforeUpdate, onActivated, getCurrentInstance, watch, computed, defineProps, PropType, withDefaults, reactive } from 'vue';
 import Paginate from 'vuejs-paginate-next'
-import { OpenbisCollection, OpenbisObject, OpenbisObjectType } from '../openbis/model/utils.jsbis/model/utils'
+import { OpenbisCollection, OpenbisObject, OpenbisObjectType } from '@/openbis/model/utils'
 
 const props = defineProps<{ entries: OpenbisCollection | null, objectTypes: OpenbisObjectType[], maxSize: number | null, size: number, title: String }>()
 const pageNumber = ref<number>(0);

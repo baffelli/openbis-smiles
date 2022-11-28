@@ -2,7 +2,7 @@
     import { useRoute, useRouter} from 'vue-router';
     import { Ref, ref } from 'vue';
     import { storeToRefs } from 'pinia';
-    import {useUser} from '../openbis/store/login.jsre/login'
+    import {useUser} from '@/openbis/store/login'
     const userStore = useUser();
     const router = useRouter();
 

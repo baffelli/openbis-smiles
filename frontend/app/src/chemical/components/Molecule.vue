@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { ref, onBeforeMount, onMounted, getCurrentInstance, watch, defineProps, defineEmits, computed } from 'vue';
 import { storeToRefs } from 'pinia';
-import { Molecule as MolInterface, useMolecule } from '@/chemical/store/molecule.js/molecule';
-import { MappedOpenbisObject, OpenbisObjectConfiguration, expandObject, OpenbisObject, InChI } from '../openbis/model/utils.jsbis/model/utils';
+import { useMolecule } from '@/chemical/store/molecule';
+import { MappedOpenbisObject, OpenbisObjectConfiguration, expandObject, OpenbisObject } from '@/openbis/model/utils';
 import { VueFinalModal } from "vue-final-modal"
 
-
+import {Molecule as MolInterface, InChI} from "@/chemical/model/Chemicals"
 
 
 const emit = defineEmits<{ (event: 'change'): string, (event: 'save'): string }>()

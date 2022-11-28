@@ -1,5 +1,5 @@
 
-    import { Molecule } from "@/chemical/store/molecule";
+    import { Molecule } from "@/chemical/model/Chemicals";
 
 
     export type validMoleculeIdentifiers = 'smiles' | 'iupac_name' | 'formula' | 'stdinchikey' | 'cas' | 'uuuuu' | 'name' | 'cid' | 'inchi'

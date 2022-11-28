@@ -202,19 +202,6 @@ export interface OpenbisObjectType extends OpenbisEntity {
     semanticAnnotations: Object | null
 }
 
-export class InChI{
-    value: string
-    static prefix = "InChI="
-
-    constructor(descriptor: string){
-        this.value = `${InChI.prefix}${descriptor}`
-    }
-    static fromInchi(inchi: string): InChI{
-        if(inchi.startsWith(InChI.prefix)){
-            return new InChI(inchi.replace(InChI.prefix, ""))
-        }
-    }
-}
 
 export function expandObject<T>(data: OpenbisObject, config: OpenbisObjectConfiguration<T>): T {
     const pairs = Object.entries(data.properties).map(
