@@ -5,12 +5,12 @@ import { storeToRefs, Store } from 'pinia';
 import { useMolecule } from '@/store/molecule';
 import { OpenbisObjectConfiguration, expandObject, reverseMapping, OpenbisCollection, OpenbsInstance, OpenbisObject } from './utils'
 import ChemDraw from './ChemDraw.vue';
-import { useOpenbis } from "@/store/openbis";
+import { useOpenbis } from "@/openbis/store/openbis";
 import ListView from './ListView.vue';
 import ListItemActions from "./ListItemActions.vue";
 import MoleculeIcon from "./MoleculeIcon.vue";
 import { Molecule as MoleculeType } from "@/store/molecule"
-import { collectionCreator } from "@/store/collection"
+import { collectionCreator } from "@/openbis/store/collection"
 
 
 const molStore = useMolecule();

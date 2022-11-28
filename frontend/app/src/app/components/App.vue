@@ -6,8 +6,8 @@
 
 <script setup lang="ts">
 import { onBeforeMount } from 'vue';
-import { useUser } from '../store/login';
-import { router } from './router/router.js';
+import { useUser } from '../../store/login';
+import { router } from '../router/router.js';
 
 
 onBeforeMount(async () => {

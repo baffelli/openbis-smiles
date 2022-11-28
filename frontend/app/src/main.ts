@@ -1,4 +1,4 @@
-import App from './app/App.vue'
+import App from './app/components/App.vue'
 import {createApp, markRaw } from 'vue'
 import piniaInstance from './store/store'
 import {router} from "./app/router/router"
