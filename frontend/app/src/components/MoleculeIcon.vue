@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Molecule } from '@/store/molecule';
+import { Molecule } from '@/chemical/store/molecule.js/molecule';
 import { StructureEditor, StructureView, Molecule as Mol } from 'openchemlib/full'
 import { ref, onMounted, onUpdated, computed,onRenderTriggered } from 'vue';
 import { expandObject, OpenbisObject, OpenbisObjectConfiguration } from '../openbis/model/utils.jsbis/model/utils';

@@ -11,7 +11,7 @@ enum DrawMode {
 <script setup lang="ts">
 
 import { ref, onBeforeMount, onMounted, onBeforeUpdate, onActivated, getCurrentInstance, watch, defineProps, PropType, withDefaults, computed } from 'vue';
-import { Molecule } from '@/store/molecule';
+import { Molecule } from '@/chemical/store/molecule.js/molecule';
 import { StructureEditor, StructureView, Molecule as Mol } from 'openchemlib/full'
 
 
