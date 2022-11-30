@@ -1,3 +1,5 @@
+import { type } from "node:os";
+import * as internal from "node:stream";
 
 export type validDataTypes = 'string' | 'boolean' | 'number' | 'object' | 'date';
 
@@ -35,10 +37,10 @@ export interface Identifier {
     identifier: string
 }
 
-export interface OpenbisRawResponse<T>{
+export interface OpenbisRawResponse<T> {
     "@type": string;
     "@id": string;
-    "objects"?:  T | T[] | null;
+    "objects"?: T | T[] | null;
     "totalCount"?: number | null;
     [key: string]: T | string | number | null | T[];
 }
@@ -46,7 +48,7 @@ export interface OpenbisRawResponse<T>{
 export type OpenbisListResponse<T> = {
     "@type": string;
     "@id": string;
-    "objects":  T[] | null | number;
+    "objects": T[] | null | number;
     "kind": "listResponse"
 }
 
@@ -58,7 +60,7 @@ export type OpenbisMapResponse<T> = {
 export type OpenbisSearchResponse<T> = {
     "@type": string;
     "@id": string;
-    "objects":  T[] | null;
+    "objects": T[] | null;
     "totalCount": number | null;
     "kind": "searchResponse"
 }
@@ -74,7 +76,7 @@ export function parseOpenbisResponse<T>(input: OpenbisRawResponse<T>): OpenbisRe
             objects: input?.objects,
             kind: "listResponse"
         } as OpenbisListResponse<T>
-    } else if (Object.hasOwn(input, "@type") && Object.hasOwn(input, "totalCount")){
+    } else if (Object.hasOwn(input, "@type") && Object.hasOwn(input, "totalCount")) {
         return {
             "@id": input["@id"],
             "@type": input["@type"],
@@ -99,7 +101,7 @@ export interface OpenbisEntity {
     attributes: object | null
 }
 
-export interface OpenbisProperties{
+export interface OpenbisProperties {
     [key: string]: string
 }
 
@@ -158,7 +160,7 @@ export interface PropertyMapping {
 export interface OpenbisObjectConfiguration<T> {
     openbisType: string
     prefix: string
-    properties: {[Property in keyof T]: PropertyMapping}
+    properties: { [Property in keyof T]: PropertyMapping }
 }
 
 export interface MappedOpenbisObjectEntry {
@@ -216,7 +218,7 @@ export function expandObject<T>(data: OpenbisObject, config: OpenbisObjectConfig
     return Object.fromEntries(pairs.filter(x => x)) as T
 }
 
-export function reverseMapping<T>(data: T, config: OpenbisObjectConfiguration<T>): OpenbisProperties{
+export function reverseMapping<T>(data: T, config: OpenbisObjectConfiguration<T>): OpenbisProperties {
     const newProps = Object.entries(data).map(
         ([key, value]) => {
 
@@ -244,13 +246,13 @@ export class SortOrder {
 
 export class Sorting {
     "@type": "as.dto.common.fetchoptions.Sorting"
-    field: string | null 
-    
+    field: string | null
+
     order: SortOrder
     parameters: Object | null
     constructor(property: string | null) {
         this["@type"] = "as.dto.common.fetchoptions.Sorting"
-        this.field = (property.toUpperCase() === 'CODE') ? "CODE" : `PROPERTY${property}` 
+        this.field = (property.toUpperCase() === 'CODE') ? "CODE" : `PROPERTY${property}`
         this.order = new SortOrder(true)
         this.parameters = null
     }
@@ -258,7 +260,7 @@ export class Sorting {
 
 interface SortOptions<T> {
     "@type": String
-}   
+}
 
 export class ObjectSortOptions implements SortOptions<OpenbisObject>{
     "@type": SortOptionsLiterals;
@@ -444,16 +446,16 @@ type SearchOperator = "AND" | "OR"
 
 export class CompositeSearchCriteria {
     "@type": string
-    criteria: (CompositeSearchCriteria |AbstractSearchCriteria)[] 
+    criteria: (CompositeSearchCriteria | AbstractSearchCriteria)[]
     operator: SearchOperator
     negated: boolean
 
-    constructor(){
+    constructor() {
         this.negated = false
         this.operator = "AND"
     }
 
-    combineLogical = <T extends this>(c1: CompositeSearchCriteria | AbstractSearchCriteria, op:SearchOperator): T => {
+    combineLogical = <T extends this>(c1: CompositeSearchCriteria | AbstractSearchCriteria, op: SearchOperator): T => {
         // const cr = this.criteria ?? []
         // const nc = [c1, ...cr]
         // const ret = {...this, criteria: nc , operator: op} 
@@ -462,10 +464,10 @@ export class CompositeSearchCriteria {
         return this as T
     }
 
-    and = <T extends this>(c1:  CompositeSearchCriteria | AbstractSearchCriteria): T => {
+    and = <T extends this>(c1: CompositeSearchCriteria | AbstractSearchCriteria): T => {
         return this.combineLogical(c1, 'AND')
     }
-    or = <T extends this>(c1:  CompositeSearchCriteria | AbstractSearchCriteria): T => {
+    or = <T extends this>(c1: CompositeSearchCriteria | AbstractSearchCriteria): T => {
         return this.combineLogical(c1, 'OR')
     }
 
@@ -489,7 +491,7 @@ export class CompositeSearchCriteria {
 
     with = <T extends this>(c1: CompositeSearchCriteria | AbstractSearchCriteria): T => {
         const nc = [c1]
-        const ret = {...this, criteria: nc} 
+        const ret = { ...this, criteria: nc }
         return ret as T
     }
 }
@@ -500,10 +502,10 @@ type SampleSearchRelation = "CHILDREN" | "CONTAINER" | "SAMPLE" | "PARENTS"
 
 export class SampleTypeSearchCriteria extends CompositeSearchCriteria {
     declare "@type": string
-    
+
     constructor() {
         super()
-        
+
         this["@type"] = "as.dto.sample.search.SampleTypeSearchCriteria"
     }
 }
@@ -536,4 +538,53 @@ export class ExperimentSearchCriteria extends CompositeSearchCriteria {
 
 }
 
+interface JSOGGraph {
+    [key: string]: JSOGGraph | string | number | JSOGGraph[] | null
+    "@id"?: number
+}
 
+type JSGOGValue = JSOGGraph | string | number | boolean
+
+
+export class JSOGDeserialiser {
+    private objectCache: Map<number, string>
+    private static special: string = "@id"
+    constructor() {
+        this.objectCache = new Map<number, string>()
+    }
+
+    public buildCache(graph: JSGOGValue) {
+        const innerGraph = graph ?? {} as JSOGGraph
+        //"ID" is found in the object keys
+        if (Object.keys(innerGraph).includes(JSOGDeserialiser.special)) {
+            this.objectCache[innerGraph['@id']] = innerGraph
+        }
+        //Now iterate over the object
+        Object.entries(innerGraph).forEach(
+            ([key, subgraph]) => {
+                if (typeof subgraph === 'number') { }
+                else if (typeof subgraph === 'string') { }
+                else if (Array.isArray(subgraph)) {
+                    subgraph.forEach(e => this.buildCache(e))
+                }
+                else { this.buildCache(subgraph) }
+            }
+        )
+        return 
+    }
+    public applyCache(graph: JSOGGraph): object {
+        const innerGraph = graph ?? {} as JSOGGraph
+        //Now iterate over the object
+        const res = Object.entries(innerGraph).map(
+            ([key, subgraph]) => {
+                if (typeof subgraph === 'number') { return [key, this.objectCache[subgraph]] }
+                else if (typeof subgraph === 'string') { return [key, subgraph] }
+                else if (Array.isArray(subgraph)) {
+                    return [key, subgraph.map(e => this.applyCache(e))]
+                }
+                else { return [key, this.applyCache(subgraph)] }
+            }
+        )
+        return Object.fromEntries(res)
+    }
+}

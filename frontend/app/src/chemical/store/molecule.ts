@@ -2,15 +2,6 @@ import { defineStore } from 'pinia'
 import * as Mol from '../service/molecule';
 import { Molecule } from '../model/Chemicals';
 
-export interface Product{
-    name: String
-    cas: String
-    articleNumber: String
-    quantity: String
-    purity: String
-    location: String
-    supplier: String
-}
 
 interface Getters {}
 

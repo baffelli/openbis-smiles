@@ -1,10 +1,8 @@
 
 import * as openbisRequests from "@/openbis/model/utils";
-import { faAngleDoubleRight } from "@fortawesome/free-solid-svg-icons";
-import { JsonTypeId } from "jackson-js";
 import { JsogService } from "jsog-typescript"
-import { describe } from "node:test";
-import { setMapStoreSuffix } from "pinia";
+import { JSOGDeserialiser } from "@/openbis/model/utils";
+import * as exp from "constants";
 
 
 const jsog = new JsogService();
@@ -41,7 +39,12 @@ export function openbisRequest(method: string, params: any[], token?: string): R
 export async function handleRequest<T>(req: RequestInfo): Promise<T> {
     const response = await fetch(req);
     if (response.ok) {
-        const body = jsog.deserialize(await response?.json()) as openbisRequests.JSONRPCResponse<T>
+        const deserializer = new JSOGDeserialiser()
+        const bodyContent = (await response?.json())
+        deserializer.buildCache(bodyContent)
+        const expanded = deserializer.applyCache(bodyContent)
+        console.log(expanded)
+        const body = jsog.deserialize(bodyContent) as openbisRequests.JSONRPCResponse<T>
         return body.result as T
     } else {
         throw new Error(`Error: ${response.status}`);

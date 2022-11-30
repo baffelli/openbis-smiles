@@ -4,7 +4,7 @@ import { ref, onBeforeMount, onMounted, getCurrentInstance, watch, markRaw, toRe
 import { storeToRefs, Store } from 'pinia';
 import { useMolecule } from '@/chemical/store/molecule';
 import { OpenbisObjectConfiguration, expandObject, reverseMapping, OpenbisCollection, OpenbsInstance, OpenbisObject } from '@/openbis/model/utils'
-import ChemDraw from '../../chemical/components/ChemDraw.vue';
+import ChemDraw from '@/chemical/components/ChemDraw.vue';
 import { useOpenbis } from "@/openbis/store/openbis";
 import ListView from '@/app/components/ListView.vue';
 import ListItemActions from "@/app/components/ListItemActions.vue";
