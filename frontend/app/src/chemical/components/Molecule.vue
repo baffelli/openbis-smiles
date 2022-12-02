@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import { ref, onBeforeMount, onMounted, getCurrentInstance, watch, defineProps, defineEmits, computed } from 'vue';
-import { storeToRefs } from 'pinia';
-import { useMolecule } from '@/chemical/store/molecule';
 import { MappedOpenbisObject, OpenbisObjectConfiguration, expandObject, OpenbisObject } from '@/openbis/model/utils';
 import { VueFinalModal } from "vue-final-modal"
 

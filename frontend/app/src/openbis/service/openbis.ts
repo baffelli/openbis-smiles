@@ -3,6 +3,8 @@ import * as openbisRequests from "@/openbis/model/utils";
 import { JsogService } from "jsog-typescript"
 import { JSOGDeserialiser } from "@/openbis/model/utils";
 import * as exp from "constants";
+import { deserialize } from "v8";
+import { FieldSorting } from "@/app/helpers/collectionHelpers";
 
 
 const jsog = new JsogService();
@@ -41,10 +43,7 @@ export async function handleRequest<T>(req: RequestInfo): Promise<T> {
     if (response.ok) {
         const deserializer = new JSOGDeserialiser()
         const bodyContent = (await response?.json())
-        deserializer.buildCache(bodyContent)
-        const expanded = deserializer.applyCache(bodyContent)
-        console.log(expanded)
-        const body = jsog.deserialize(bodyContent) as openbisRequests.JSONRPCResponse<T>
+        const body = bodyContent as openbisRequests.JSONRPCResponse<T>
         return body.result as T
     } else {
         throw new Error(`Error: ${response.status}`);
@@ -53,9 +52,11 @@ export async function handleRequest<T>(req: RequestInfo): Promise<T> {
 
 export async function handleOpenbisResponse<T>(req: RequestInfo): Promise<T> {
     const data = openbisRequests.parseOpenbisResponse<T>(await handleRequest<openbisRequests.OpenbisRawResponse<T>>(req))
+    const deserializer = new JSOGDeserialiser()
+    deserializer.buildCache(data)
     switch (data.kind) {
-        case "searchResponse": {return {...data} as T}
-        case "listResponse": { return data.objects as T }
+        case "searchResponse": {return {...deserializer.applyCache(data)} as T}
+        case "listResponse": { return deserializer.applyCache(data.objects) as T }
         case "singleResponse": { return data as T }
     }
 }
@@ -127,12 +128,6 @@ export async function getObjectTypes(token: string): Promise<openbisRequests.Ope
             "@id": 0,
             "@type": "as.dto.sample.fetchoptions.SampleTypeFetchOptions",
             "sort": null,
-            "propertyAssignments": {
-                "@type": "as.dto.property.fetchoptions.PropertyAssignmentFetchOptions",
-                "propertyType": {
-                    "@type": "as.dto.property.fetchoptions.PropertyTypeFetchOptions"
-                }
-            }
         }
     ];
     const req = openbisRequest('searchSampleTypes', reqData, token);
@@ -141,15 +136,15 @@ export async function getObjectTypes(token: string): Promise<openbisRequests.Ope
 }
 
 
-export async function getCollection(token: string, identifier: string, withType: string | null = null, withObjects: boolean = false, startPage: number | null = null, count: number | null, sortBy: string[] | null): Promise<openbisRequests.OpenbisCollection> {
+export async function getCollection(token: string, identifier: string, withType: string | null = null, withObjects: boolean = false, startPage: number | null = null, count: number | null, sortBy: FieldSorting[] | null): Promise<openbisRequests.OpenbisCollection> {
+    const sorters = sortBy ? sortBy.map((c) => openbisRequests.Sorting.fromFieldSorter(c)) : null
     const reqData = [
         new openbisRequests.SampleSearchCriteria().and(new openbisRequests.ExperimentSearchCriteria().withIdentifier(identifier)).withType(withType),
-        new openbisRequests.ObjectFetchOptions(true, true, true, startPage, count, withType, sortBy ? new openbisRequests.ObjectSortOptions(openbisRequests.sortByField(sortBy)) : null)
+        new openbisRequests.ObjectFetchOptions(true, true, true, startPage, count, withType, sortBy ? new openbisRequests.ObjectSortOptions(sorters) : null)
     ]
     const req = openbisRequest('searchSamples', reqData, token)
 
     const text = await new Response(req.body).text();
-    //console.log(text)
     const data = await handleOpenbisResponse<openbisRequests.OpenbisSearchResponse<openbisRequests.OpenbisObject>>(req);
     const newData = {identifier: {identifier: identifier} as openbisRequests.Identifier, samples: data.objects, totalCount: data.totalCount} as openbisRequests.OpenbisCollection
     return newData

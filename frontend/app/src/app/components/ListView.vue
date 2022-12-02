@@ -3,21 +3,24 @@ import { propsToAttrMap } from '@vue/shared';
 import { ref, onBeforeMount, onMounted, onUpdated, onRenderTriggered, onBeforeUpdate, onActivated, getCurrentInstance, watch, computed, defineProps, PropType, withDefaults, reactive } from 'vue';
 import Paginate from 'vuejs-paginate-next'
 import { OpenbisCollection, OpenbisObject, OpenbisObjectType } from '@/openbis/model/utils'
+import { FieldSorting, changeSortingStatus, FieldSortingManager} from '@/app/helpers/collectionHelpers'
 
-const props = defineProps<{ entries: OpenbisCollection | null, objectTypes: OpenbisObjectType[], maxSize: number | null, size: number, title: String }>()
+
+const props = defineProps<{ entries: OpenbisCollection | null, maxSize: number | null, size: number, title: String }>()
 const pageNumber = ref<number>(0);
 
 const selectedElement = ref<OpenbisObject>(null)
-const emit = defineEmits<{ 
+const emit = defineEmits<{
   (e: 'select', id: OpenbisObject): void,
   (e: 'pageChanged', to: Number): void,
-  (e: 'sortChanged', field: String): void
- }>()
+  (e: 'sortChanged', field: FieldSorting[]): void
+}>()
 
 
+//const sortingFields = ref<FieldSorting[]>([{ field: "CODE", asc: true, status: "asc"}])
 
-const samples = computed( () => props.entries?.samples)
-const size = computed( () => props.size )
+const samples = computed(() => props.entries?.samples)
+const size = computed(() => props.size)
 
 
 const pageCount = computed(
@@ -44,7 +47,7 @@ function prevPage() {
 function toPage(page: number) {
   pageNumber.value = page
   emit('pageChanged', page)
-  
+
 }
 
 const paginatedEntries = computed(
@@ -66,6 +69,28 @@ const allObjectProperties = computed(() => {
 }
 )
 
+const fieldManager = new FieldSortingManager()
+allObjectProperties.value.forEach(
+  (s) => fieldManager.addField(new FieldSorting(s, true))
+)
+
+
+function addSorting(field: string, remove: boolean = false) {
+  // const newSorting = [...sortingFields.value]
+  fieldManager.changeFieldStatus(field)
+  // const found = changeSortingStatus(newSorting.find((el) => el.field === field))
+  // const updatedSorting = found? 
+  // sortingFields.value = updatedSorting
+  debugger
+  emit('sortChanged', fieldManager.fields)
+}
+
+function sortClass(prop: string): string{
+  const res = fieldManager.getField(prop)
+  return res ? ( res.asc ? "bi bi-sort-alpha-down" : "bi bi-sort-alpha-up") : ""
+}
+
+
 
 </script>
 
@@ -78,9 +103,12 @@ const allObjectProperties = computed(() => {
           <tr>
             <th>Extra</th>
             <th>Code</th>
-            <th v-for="prop in allObjectProperties">
-              {{ prop }}
-              <div @click="$emit('sortChanged', prop)"><i class="bi bi-sort-alpha-down"></i></div>
+            <th v-for="prop in allObjectProperties" @click="addSorting(prop)">
+              <div class="flex-container">
+                <div class="flex-child" >{{ prop }}</div>
+                <div class='flex-child' ><i :class=sortClass(prop)></i></div>
+              </div>
+
             </th>
           </tr>
         </thead>
@@ -90,14 +118,14 @@ const allObjectProperties = computed(() => {
             <td>
               <!-- This slot will be used to render the molecule-->
               <slot name="extra" :entry="entry"></slot>
-            
+
             </td>
             <td>{{ entry.code }}</td>
             <td v-for="prop in entry.properties">{{ prop }}</td>
             <td @click.prevent>
               <slot name="actions" :entry="entry"></slot>
             </td>
-           
+
           </tr>
         </tbody>
       </table>
@@ -134,11 +162,21 @@ ul.pagination li {
 }
 
 
+.table {
+  width: 100%;
+  table-layout: fixed;
+  overflow-x: auto;
+}
 
+.table thead tr th {
+  border: 1px solid;
+}
 
 .table tbody tr {
   display: table-row;
+  overflow-x: auto;
   margin-bottom: 5px;
+  max-width: 100%;
 
 }
 
@@ -147,7 +185,15 @@ tbody .highlight {
 }
 
 .table tbody td {
-  overflow: hidden;
+  overflow: auto;
   text-align: center;
+}
+
+.flex-container {
+  display: flex;
+}
+
+.flex-child {
+  flex: 4;
 }
 </style>

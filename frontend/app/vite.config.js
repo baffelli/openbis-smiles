@@ -19,13 +19,6 @@ export default defineConfig({
         cors: true,
         port: 5173,
         proxy: {
-            "//api/" :{
-                ws: true,
-                changeOrigin: true,
-                secure: false,
-                target: "https://openbis:443/openbis/resources/api/v3/",
-                rewrite: (path) => {console.log(path);  const newPath = path.replace(/^\/api/, ''); console.log(newPath); return newPath}
-            },
             '/openbis/': {
                 ws: true,
                 changeOrigin: true,
@@ -42,12 +35,12 @@ export default defineConfig({
     ,
     build:
     {
-        target: 'es2020',
+        target: 'esnext',
         supported: ['array-spread'],
     },
     optimizeDeps: {
         esbuildOptions: {
-            target: "es2020",
+            target: "esnext",
         }
     },
 

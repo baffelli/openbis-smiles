@@ -9,7 +9,7 @@ interface Getters { }
 
 interface Actions {
     populate(),
-    getAllCollections(): Interfaces.OpenbisCollection
+    getAllCollections(): Interfaces.OpenbisCollection[]
 }
 
 interface State {

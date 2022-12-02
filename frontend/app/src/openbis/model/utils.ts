@@ -1,5 +1,6 @@
-import { type } from "node:os";
-import * as internal from "node:stream";
+import { JsogObject } from "jsog-typescript/dist/model/JsogObject";
+import {FieldSorting} from '@/app/helpers/collectionHelpers'
+
 
 export type validDataTypes = 'string' | 'boolean' | 'number' | 'object' | 'date';
 
@@ -39,7 +40,7 @@ export interface Identifier {
 
 export interface OpenbisRawResponse<T> {
     "@type": string;
-    "@id": string;
+    "@id": string  | number;
     "objects"?: T | T[] | null;
     "totalCount"?: number | null;
     [key: string]: T | string | number | null | T[];
@@ -47,7 +48,7 @@ export interface OpenbisRawResponse<T> {
 
 export type OpenbisListResponse<T> = {
     "@type": string;
-    "@id": string;
+    "@id": string | number;
     "objects": T[] | null | number;
     "kind": "listResponse"
 }
@@ -59,7 +60,7 @@ export type OpenbisMapResponse<T> = {
 
 export type OpenbisSearchResponse<T> = {
     "@type": string;
-    "@id": string;
+    "@id": string | number;
     "objects": T[] | null;
     "totalCount": number | null;
     "kind": "searchResponse"
@@ -74,6 +75,7 @@ export function parseOpenbisResponse<T>(input: OpenbisRawResponse<T>): OpenbisRe
             "@id": input["@id"],
             "@type": input["@type"],
             objects: input?.objects,
+            totalCount: input?.totalCount,
             kind: "listResponse"
         } as OpenbisListResponse<T>
     } else if (Object.hasOwn(input, "@type") && Object.hasOwn(input, "totalCount")) {
@@ -237,8 +239,8 @@ type SortOptionsLiterals = "as.dto.sample.fetchoptions.SampleSortOptions" | "as.
 
 export class SortOrder {
     "@type": string
-    asc: boolean
-    constructor(asc: true) {
+    asc: Boolean
+    constructor(asc: Boolean = true) {
         this["@type"] = "as.dto.common.fetchoptions.SortOrder"
         this.asc = asc
     }
@@ -250,11 +252,14 @@ export class Sorting {
 
     order: SortOrder
     parameters: Object | null
-    constructor(property: string | null) {
+    constructor(property: string | null, asc: Boolean = true) {
         this["@type"] = "as.dto.common.fetchoptions.Sorting"
         this.field = (property.toUpperCase() === 'CODE') ? "CODE" : `PROPERTY${property}`
-        this.order = new SortOrder(true)
+        this.order = new SortOrder(asc)
         this.parameters = null
+    }
+    public static fromFieldSorter(sorter: FieldSorting): Sorting{
+        return new Sorting(sorter.field, sorter.asc)
     }
 }
 
@@ -538,26 +543,26 @@ export class ExperimentSearchCriteria extends CompositeSearchCriteria {
 
 }
 
-interface JSOGGraph {
-    [key: string]: JSOGGraph | string | number | JSOGGraph[] | null
-    "@id"?: number
-}
+// interface JSOGGraph extends OpenbisRawResponse {
+//     [key: string]: JSOGGraph | string | number | JSOGGraph[] | null
+//     "@id"?: number
+// }
 
-type JSGOGValue = JSOGGraph | string | number | boolean
+// type JSGOGValue = JSOGGraph | string  | boolean
 
 
 export class JSOGDeserialiser {
-    private objectCache: Map<number, string>
+    private objectCache: Map<number, any>
     private static special: string = "@id"
     constructor() {
         this.objectCache = new Map<number, string>()
     }
 
-    public buildCache(graph: JSGOGValue) {
-        const innerGraph = graph ?? {} as JSOGGraph
+    public buildCache<T>(graph: OpenbisResponse<T>) {
+        const innerGraph = graph ?? {} as OpenbisResponse<T>
         //"ID" is found in the object keys
-        if (Object.keys(innerGraph).includes(JSOGDeserialiser.special)) {
-            this.objectCache[innerGraph['@id']] = innerGraph
+        if (Object.keys(innerGraph).includes(JSOGDeserialiser.special) && typeof innerGraph['@id'] === 'number') {
+            this.objectCache[innerGraph['@id'] as number] = innerGraph
         }
         //Now iterate over the object
         Object.entries(innerGraph).forEach(
@@ -572,19 +577,25 @@ export class JSOGDeserialiser {
         )
         return 
     }
-    public applyCache(graph: JSOGGraph): object {
-        const innerGraph = graph ?? {} as JSOGGraph
+    public applyCache<T>(graph: OpenbisResponse<T>): OpenbisResponse<T> {
+        const innerGraph = graph ?? {} as OpenbisResponse<T>
         //Now iterate over the object
-        const res = Object.entries(innerGraph).map(
-            ([key, subgraph]) => {
-                if (typeof subgraph === 'number') { return [key, this.objectCache[subgraph]] }
-                else if (typeof subgraph === 'string') { return [key, subgraph] }
-                else if (Array.isArray(subgraph)) {
-                    return [key, subgraph.map(e => this.applyCache(e))]
+        if(Array.from(["number", "boolean"]).includes(typeof graph)){
+            return graph
+        }else{
+            const res = Object.entries(innerGraph).map(
+                ([key, subgraph]) => {
+                    if (typeof subgraph === 'number') { return [key, this.objectCache[subgraph]] }
+                    else if (typeof subgraph === 'string') { return [key, subgraph] }
+                    else if (Array.isArray(subgraph)) {
+                        return [key, subgraph.map(e => this.applyCache(e))]
+                    }
+                    else { return [key, this.applyCache(subgraph)] }
                 }
-                else { return [key, this.applyCache(subgraph)] }
-            }
-        )
-        return Object.fromEntries(res)
+            )
+            return Object.fromEntries(res) as OpenbisResponse<T>
+        }
+
     }
 }
+

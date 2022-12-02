@@ -17,6 +17,7 @@
         "src/**/*.ts",
         "src/**/*.vue",
         "src/*.ts",
-        "src/*.vue"
+        "src/*.vue",
+        "openbis/*.js"
     ]
 }
