@@ -9,11 +9,9 @@ import org.jetbrains.kotlin.ir.backend.js.transformers.irToJs.argumentsWithVarar
  */
 plugins {
     // Apply the org.jetbrains.kotlin.jvm Plugin to add support for Kotlin.
-    val kotlinVer = "1.7.21"
-    // Apply the org.jetbrains.kotlin.jvm Plugin to add support for Kotlin.
-    id("org.jetbrains.kotlin.jvm") version kotlinVer
+    alias(libs.plugins.kotlin)
     //Plugin for serialisation
-    id("org.jetbrains.kotlin.plugin.serialization") version kotlinVer
+    alias(libs.plugins.serialisation)
     // Apply the application plugin to add support for building a CLI application in Java.
     application
 
@@ -31,88 +29,62 @@ repositories {
             ivy("[organisation]/[module]/[revision]/ivy.xml")
         }
     }
-    //SDF Eater (Not used now)
-    ivy {
-        url = uri("https://github.com/lszeremeta/")
-        patternLayout {
-            artifact("[module]/releases/download/v[revision]/[artifact]-[revision](-[classifier]).[ext]")
-        }
-        metadataSources {
-            artifact()
-        }
-    }
-
 }
 
 
 
 dependencies {
     // Align versions of all Kotlin components
-    implementation(platform("org.jetbrains.kotlin:kotlin-bom"))
+    implementation(platform(libs.kotlin.bom))
 
     // Use the Kotlin JDK 8 standard library.
-    implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
+    implementation(libs.kotlin.stdlib)
 
     // Use the Kotlin test library.
-    testImplementation("org.jetbrains.kotlin:kotlin-test")
+    testImplementation(libs.kotlin.test)
 
     // Use the Kotlin JUnit integration.
-    testImplementation("org.jetbrains.kotlin:kotlin-test-junit")
+    testImplementation(libs.kotlin.test.junit)
 
-    //Apache arrow
-    val useArrow: String by project
-    if (useArrow.toBoolean()) {
-        val arrowVer: String by project
-        implementation("org.apache.arrow:arrow-vector:${arrowVer}")
-        implementation("org.apache.arrow:arrow-dataset:${arrowVer}")
-        implementation("org.apache.arrow:arrow-memory-netty:${arrowVer}")
-    }
 
 
     //Dataframes in kotlin
-    val dataFrameVer: String by project
-    implementation("org.jetbrains.kotlinx:dataframe:${dataFrameVer}")
+    implementation(libs.kotlinx.dataframe)
 
     //openBIS API
-    val openBISVer: String by project
-    implementation("openbis:openbis-v3-api:${openBISVer}")
+    implementation(libs.openbis)
 
     // Kotlinx for serialization
-    val serialVer: String by project
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:${serialVer}")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-properties:${serialVer}")
+    implementation(libs.kotlinx.serialization)
+    implementation(libs.kotlinx.serialization.properties)
 
 
     //Reflection
-    implementation("org.jetbrains.kotlin:kotlin-reflect")
+    implementation(libs.kotlin.reflect)
 
 
     //Ktor
-    val ktorVer: String by project
-    implementation("io.ktor:ktor-client-core:${ktorVer}")
-    implementation("io.ktor:ktor-client-cio:${ktorVer}")
-    implementation("io.ktor:ktor-client-content-negotiation:${ktorVer}")
-    implementation("io.ktor:ktor-serialization-kotlinx-json:${ktorVer}")
+    implementation(libs.ktor.client.core)
+    implementation(libs.ktor.client.cio)
+    implementation(libs.ktor.client.contentNegotiation)
+    implementation(libs.ktor.serialization.kotlinxJson)
+
 
     //Command line parsing
-    implementation("com.github.ajalt.clikt:clikt:3.5.0")
-    implementation("org.jetbrains.kotlinx:kotlinx-cli:0.3.5")
+    implementation(libs.kotlinx.cli)
 
     //SDF file reader
-    val openchemlibVer: String by project
-    implementation("com.actelion.research:openchemlib:${openchemlibVer}")
+    implementation(libs.openchemlib)
 
     //SQLLite
-    val sqlliteVer: String by project
-    implementation("org.xerial:sqlite-jdbc:${sqlliteVer}")
+    implementation(libs.sqllite.jdbc)
 
     //ORM
-    val exposedVer: String by project
-    implementation("org.jetbrains.exposed:exposed-core:${exposedVer}")
-    implementation("org.jetbrains.exposed:exposed-jdbc:${exposedVer}")
+    implementation(libs.exposed.core)
+    implementation(libs.exposed.jdbc)
 
     //Logging
-    implementation("org.slf4j:slf4j-jdk14:2.0.3")
+    implementation(libs.slf4j)
 }
 
 application {
